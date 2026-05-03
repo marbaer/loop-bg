@@ -1,13 +1,8 @@
 import { Heatmap, heatmapPresets } from "@paper-design/shaders-react";
 import type { PaperPreset } from "./types";
+import logoImage from "../../public/favicon.png";
 
 const d = heatmapPresets[0].params;
-
-const TRANSPARENT_PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 225"><rect width="400" height="225" fill="rgba(255,255,255,0.05)"/><text x="200" y="118" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#888" text-anchor="middle">Upload a logo to see this preset</text></svg>'
-  );
 
 export const paperLogoHeatmap: PaperPreset = {
   kind: "paper",
@@ -32,7 +27,7 @@ export const paperLogoHeatmap: PaperPreset = {
   ],
   defaults: { ...d },
   propsFor: (params, _palette, image) => ({
-    image: image ?? TRANSPARENT_PLACEHOLDER,
+    image: image ?? logoImage,
     colors: params.colors,
     colorBack: params.colorBack,
     speed: params.speed,

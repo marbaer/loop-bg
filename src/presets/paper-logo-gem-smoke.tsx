@@ -1,5 +1,6 @@
 import { GemSmoke, gemSmokePresets } from "@paper-design/shaders-react";
 import type { PaperPreset } from "./types";
+import logoImage from "../../public/favicon.png";
 
 const d = gemSmokePresets[0].params;
 
@@ -17,19 +18,6 @@ export const paperLogoGemSmoke: PaperPreset = {
     { kind: "colorArray", key: "colors", label: "Gem colors", maxCount: 6, minCount: 1 },
   ],
   schema: [
-    {
-      kind: "select",
-      key: "shape",
-      label: "Fallback shape (when no logo)",
-      options: [
-        { value: "none", label: "None" },
-        { value: "circle", label: "Circle" },
-        { value: "daisy", label: "Daisy" },
-        { value: "diamond", label: "Diamond" },
-        { value: "metaballs", label: "Metaballs" },
-      ],
-      default: (d.shape as string) ?? "metaballs",
-    },
     { kind: "range", key: "speed", label: "Speed", min: 0, max: 2.5, step: 0.05, default: d.speed },
     { kind: "range", key: "innerDistortion", label: "Inner distortion", min: 0, max: 1, step: 0.01, default: d.innerDistortion },
     { kind: "range", key: "outerDistortion", label: "Outer distortion", min: 0, max: 1, step: 0.01, default: d.outerDistortion },
@@ -42,8 +30,8 @@ export const paperLogoGemSmoke: PaperPreset = {
   ],
   defaults: { ...d },
   propsFor: (params, _palette, image) => ({
-    image: image ?? undefined,
-    shape: image ? undefined : params.shape ?? "metaballs",
+    image: image ?? logoImage,
+    shape: undefined,
     colors: params.colors,
     colorBack: params.colorBack,
     colorInner: params.colorInner,

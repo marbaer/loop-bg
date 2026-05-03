@@ -94,7 +94,13 @@ function Control({
         step={step}
         value={numericValue}
         onChange={(e) => onChange(parseFloat(e.target.value))}
+        onInput={(e) => {
+          const target = e.target as HTMLInputElement;
+          const percent = ((parseFloat(target.value) - parseFloat(target.min)) / (parseFloat(target.max) - parseFloat(target.min))) * 100;
+          target.style.setProperty('--slider-fill', `${percent}%`);
+        }}
         className="w-full accent-accent"
+        style={{ '--slider-fill': `${((numericValue - schema.min) / (schema.max - schema.min)) * 100}%` } as React.CSSProperties}
       />
     </label>
   );

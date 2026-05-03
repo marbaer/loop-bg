@@ -1,5 +1,6 @@
 import { LiquidMetal, liquidMetalPresets } from "@paper-design/shaders-react";
 import type { PaperPreset } from "./types";
+import logoImage from "../../public/favicon.png";
 
 const d = liquidMetalPresets[0].params;
 
@@ -16,19 +17,6 @@ export const paperLogoLiquidMetal: PaperPreset = {
     { kind: "color", key: "colorTint", label: "Metal tint" },
   ],
   schema: [
-    {
-      kind: "select",
-      key: "shape",
-      label: "Fallback shape (when no logo)",
-      options: [
-        { value: "none", label: "None" },
-        { value: "circle", label: "Circle" },
-        { value: "daisy", label: "Daisy" },
-        { value: "diamond", label: "Diamond" },
-        { value: "metaballs", label: "Metaballs" },
-      ],
-      default: (d.shape as string) ?? "metaballs",
-    },
     { kind: "range", key: "speed", label: "Speed", min: 0, max: 2.5, step: 0.05, default: d.speed },
     { kind: "range", key: "repetition", label: "Stripe density", min: 1, max: 10, step: 0.1, default: d.repetition },
     { kind: "range", key: "softness", label: "Softness", min: 0, max: 1, step: 0.01, default: d.softness },
@@ -41,8 +29,8 @@ export const paperLogoLiquidMetal: PaperPreset = {
   ],
   defaults: { ...d },
   propsFor: (params, _palette, image) => ({
-    image: image ?? undefined,
-    shape: image ? undefined : params.shape ?? "metaballs",
+    image: image ?? logoImage,
+    shape: undefined,
     colorBack: params.colorBack,
     colorTint: params.colorTint,
     speed: params.speed,
