@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Lato (body) — Mark Pro is paid, so headlines fall back to Inter via the font stack. */
+@import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap");
+
+:root,
+[data-theme="dark"] {
+  --surface:          30 29 40;       /* #1e1d28 */
+  --surface-raised:   42 44 55;       /* #2a2c37 */
+  --surface-popover:  43 42 53;       /* #2b2a35 */
+  --border:           255 255 255;
+  --border-alpha:     0.10;
+  --border-strong:    255 255 255;
+  --border-strong-alpha: 0.20;
+  --text:             243 244 246;    /* grey 1 */
+  --text-muted:       143 146 163;    /* grey 4 */
+  --text-subtle:      111 115 135;    /* grey 5 */
+  --overlay-base:     255 255 255;
+  --overlay-1-alpha:  0.03;
+  --overlay-2-alpha:  0.06;
+  --overlay-3-alpha:  0.10;
+  --accent:           107 83 255;     /* #6b53ff */
+  --accent-text:      255 255 255;
+  --danger:           225 71 71;
+}
+
+[data-theme="light"] {
+  --surface:          255 255 255;
+  --surface-raised:   248 248 250;    /* grey 0 */
+  --surface-popover:  255 255 255;
+  --border:           224 225 230;    /* grey 2 — solid, not opacity-based */
+  --border-alpha:     1.0;
+  --border-strong:    215 216 224;    /* grey 3 */
+  --border-strong-alpha: 1.0;
+  --text:             42 44 55;       /* grey 8 */
+  --text-muted:       111 115 135;    /* grey 5 */
+  --text-subtle:      143 146 163;    /* grey 4 */
+  --overlay-base:     13 14 19;       /* grey 9 */
+  --overlay-1-alpha:  0.03;
+  --overlay-2-alpha:  0.06;
+  --overlay-3-alpha:  0.10;
+  --accent:           107 83 255;
+  --accent-text:      255 255 255;
+  --danger:           225 71 71;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "Lato", "Inter", ui-sans-serif, system-ui, sans-serif;
+  background: rgb(var(--surface));
+  color: rgb(var(--text));
+}
+
+/* react-colorful — themed surfaces */
+.loop-bg-color-picker.react-colorful {
+  width: 100% !important;
+  height: 180px !important;
+  gap: 10px;
+}
+.loop-bg-color-picker .react-colorful__saturation {
+  border-radius: 8px;
+  border: 1px solid rgb(var(--border) / var(--border-alpha));
+  margin-bottom: 10px;
+}
+.loop-bg-color-picker .react-colorful__hue {
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--border) / var(--border-alpha));
+}
+.loop-bg-color-picker .react-colorful__pointer {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* slim scrollbars — themed via overlay token */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--overlay-base) / var(--overlay-2-alpha));
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--overlay-base) / var(--overlay-3-alpha));
+}

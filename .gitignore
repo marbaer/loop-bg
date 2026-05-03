@@ -1,0 +1,17 @@
+node_modules
+dist
+.DS_Store
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/*
+!.vscode/launch.json
+.idea
+
+# Build / cache
+*.log
+.vite
