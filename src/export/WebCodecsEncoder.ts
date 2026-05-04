@@ -54,7 +54,12 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
       fastStart: "in-memory",
     });
   } else {
-    codec = "vp09.00.50.08";
+    // VP9 level by required luma sample rate and picture size:
+    //   L5.0 — required for >1080p (1440p needs the larger picture cap)
+    //   L4.0 — 1080p@60 (max sample rate 138M, fits 1920x1080x60 ≈ 124M)
+    //   L3.1 — 1080p@30 and below
+    const vp9Level = width > 2048 || height > 1152 ? "50" : fps > 30 ? "40" : "31";
+    codec = `vp09.00.${vp9Level}.08`;
     muxer = new WebmMuxer({
       target: new WebmTarget(),
       video: {
@@ -89,8 +94,12 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
     height,
     bitrate,
     framerate: fps,
-    bitrateMode: "constant",
-    hardwareAcceleration: "prefer-hardware",
+    // CBR + prefer-hardware works reliably for H.264 (universal hw support).
+    // For VP9, libvpx software encoder rejects CBR with "Encoder creation
+    // error", and macOS hardware VP9 encode only exists on M3+ — so we let
+    // the browser pick (variable bitrate, software/hardware as available).
+    bitrateMode: format === "mp4" ? "constant" : undefined,
+    hardwareAcceleration: format === "mp4" ? "prefer-hardware" : undefined,
     // mp4-muxer requires AVCC format (length-prefixed NAL units). Annex-B
     // start codes inside an MP4 produce a file that no player can decode.
     avc: format === "mp4" ? { format: "avc" } : undefined,
