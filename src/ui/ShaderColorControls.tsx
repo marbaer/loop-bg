@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useStore, useActiveParams } from "../state/store";
 import type { ColorSlot, PaperPreset } from "../presets/types";
 import { shadesFromColor } from "../color/shades";
@@ -95,7 +95,7 @@ function ColorRow({
       {dragHandleProps && (
         <div
           {...dragHandleProps}
-          className="grid h-8 w-4 flex-shrink-0 cursor-grab place-items-center text-text-subtle hover:text-text active:cursor-grabbing"
+          className="grid h-9 w-7 flex-shrink-0 cursor-grab touch-none place-items-center text-text-subtle hover:text-text active:cursor-grabbing lg:h-8 lg:w-4"
           title="Drag to reorder"
         >
           <GripIcon />
@@ -153,6 +153,12 @@ function ArrayControl({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [overEdge, setOverEdge] = useState<"top" | "bottom" | null>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dragStateRef = useRef<{ from: number; over: number | null; edge: "top" | "bottom" | null }>({
+    from: -1,
+    over: null,
+    edge: null,
+  });
 
   function reorder(from: number, to: number) {
     if (from === to) return;
@@ -160,6 +166,13 @@ function ArrayControl({
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     onChange(next);
+  }
+
+  function resetDrag() {
+    dragStateRef.current = { from: -1, over: null, edge: null };
+    setDragIndex(null);
+    setOverIndex(null);
+    setOverEdge(null);
   }
 
   return (
@@ -199,30 +212,8 @@ function ArrayControl({
           return (
             <div
               key={i}
-              draggable={dragIndex !== null}
-              onDragOver={(e) => {
-                if (dragIndex === null) return;
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                const rect = e.currentTarget.getBoundingClientRect();
-                const edge: "top" | "bottom" = e.clientY - rect.top < rect.height / 2 ? "top" : "bottom";
-                setOverIndex(i);
-                setOverEdge(edge);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragIndex === null) return;
-                let target = overEdge === "bottom" ? i + 1 : i;
-                if (target > dragIndex) target -= 1;
-                reorder(dragIndex, target);
-                setDragIndex(null);
-                setOverIndex(null);
-                setOverEdge(null);
-              }}
-              onDragEnd={() => {
-                setDragIndex(null);
-                setOverIndex(null);
-                setOverEdge(null);
+              ref={(el) => {
+                itemRefs.current[i] = el;
               }}
             >
               <ColorRow
@@ -238,9 +229,44 @@ function ArrayControl({
                     : undefined
                 }
                 dragHandleProps={{
-                  onMouseDown: () => setDragIndex(i),
-                  onMouseUp: () => {
-                    if (overIndex === null) setDragIndex(null);
+                  onPointerDown: (e) => {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    dragStateRef.current = { from: i, over: null, edge: null };
+                    setDragIndex(i);
+                  },
+                  onPointerMove: (e) => {
+                    const state = dragStateRef.current;
+                    if (state.from < 0) return;
+                    const y = e.clientY;
+                    let foundOver: number | null = null;
+                    let foundEdge: "top" | "bottom" | null = null;
+                    for (let j = 0; j < itemRefs.current.length; j++) {
+                      const el = itemRefs.current[j];
+                      if (!el) continue;
+                      const rect = el.getBoundingClientRect();
+                      if (y >= rect.top && y <= rect.bottom) {
+                        foundOver = j;
+                        foundEdge = y - rect.top < rect.height / 2 ? "top" : "bottom";
+                        break;
+                      }
+                    }
+                    if (foundOver !== state.over || foundEdge !== state.edge) {
+                      dragStateRef.current = { from: state.from, over: foundOver, edge: foundEdge };
+                      setOverIndex(foundOver);
+                      setOverEdge(foundEdge);
+                    }
+                  },
+                  onPointerUp: () => {
+                    const { from, over, edge } = dragStateRef.current;
+                    if (from >= 0 && over !== null && edge !== null) {
+                      let target = edge === "bottom" ? over + 1 : over;
+                      if (target > from) target -= 1;
+                      reorder(from, target);
+                    }
+                    resetDrag();
+                  },
+                  onPointerCancel: () => {
+                    resetDrag();
                   },
                 }}
                 dragging={dragIndex === i}

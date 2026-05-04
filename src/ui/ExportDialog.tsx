@@ -75,7 +75,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[440px] rounded-lg border border-border bg-surface-popover p-5 text-text shadow-2xl">
+      <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover p-5 text-text shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-text">Export video</h2>
           <button onClick={onClose} disabled={busy} className="text-text-subtle hover:text-text disabled:opacity-30" aria-label="Close">

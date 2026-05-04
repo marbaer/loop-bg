@@ -40,8 +40,8 @@ export function App() {
   const showVariants = preset.kind === "paper" && (preset.variants?.length ?? 0) > 1;
 
   return (
-    <div className="flex h-full w-full bg-surface text-text">
-      <main className="relative flex flex-1 flex-col items-center justify-center gap-7 bg-surface p-6">
+    <div className="flex min-h-full w-full flex-col bg-surface text-text lg:h-full lg:flex-row">
+      <main className="relative flex flex-col items-center justify-center gap-5 bg-surface p-4 lg:flex-1 lg:gap-7 lg:p-6">
         <div className="relative w-full max-w-[min(100%,calc((100vh-7rem)*16/9))]">
           <div className="aspect-video w-full overflow-hidden rounded border border-border shadow-panel">
             {preset.kind === "shader" ? (
@@ -62,7 +62,7 @@ export function App() {
           Export video
         </button>
       </main>
-      <aside className="w-[340px] flex-shrink-0 overflow-y-auto border-l border-border bg-surface-raised p-5">
+      <aside className="w-full border-t border-border bg-surface-raised p-4 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-5">
         <header className="mb-5 flex items-center justify-between">
           <div className="text-base font-semibold text-text">Loop BG</div>
           <IconButton
