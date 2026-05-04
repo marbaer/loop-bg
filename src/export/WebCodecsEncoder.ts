@@ -39,7 +39,10 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
   let codec: string;
 
   if (format === "mp4") {
-    codec = "avc1.640028"; // H.264 High Profile, level 4.0
+    // Level 4.0 (0x28) caps at 2,097,152 px (1080p and below).
+    // Level 5.0 (0x32) caps at 5,652,480 px (1440p).
+    const avcLevel = width * height <= 2_097_152 ? "28" : "32";
+    codec = `avc1.6400${avcLevel}`; // H.264 High Profile
     muxer = new Mp4Muxer({
       target: new Mp4Target(),
       video: {
@@ -63,6 +66,11 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
     });
   }
 
+  // Captured asynchronously from the encoder's error callback. We surface it
+  // on the next encodeFrame / finish call so a broken encoder aborts the
+  // export loudly instead of silently dropping frames into a frozen file.
+  let encodeError: Error | null = null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const encoder = new (globalThis as any).VideoEncoder({
     output: (chunk: any, meta: any) => {
@@ -70,6 +78,7 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
       (muxer as any).addVideoChunk(chunk, meta);
     },
     error: (e: unknown) => {
+      encodeError = e instanceof Error ? e : new Error(String(e));
       console.error("VideoEncoder error", e);
     },
   });
@@ -89,22 +98,34 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
 
   return {
     async encodeFrame(canvas, frameIndex) {
+      if (encodeError) throw encodeError;
+      // Backpressure: yield until the encoder drains its queue. Without this,
+      // a render loop that produces frames faster than the GPU encoder can
+      // consume them overruns the encoder, which then silently drops frames.
+      // Those gaps appear in the muxed file as frozen sections during playback.
+      while (encoder.encodeQueueSize > 2) {
+        await new Promise((r) => setTimeout(r, 0));
+        if (encodeError) throw encodeError;
+      }
       // Force keyframe every ~2s to keep seekability sane.
       const keyframe = frameIndex === 0 || frameIndex % (fps * 2) === 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const frame = new (globalThis as any).VideoFrame(canvas, {
         timestamp: Math.round(frameIndex * microsPerFrame),
         duration: Math.round(microsPerFrame),
       });
       encoder.encode(frame, { keyFrame: keyframe });
       frame.close();
-      // Yield to event loop occasionally so UI progress paints.
+      // Yield every few frames so the UI progress bar can paint.
       if (frameIndex % 8 === 0) {
         await new Promise((r) => setTimeout(r, 0));
       }
       opts.onProgress?.(frameIndex + 1, totalFrames);
     },
     async finish() {
+      if (encodeError) throw encodeError;
       await encoder.flush();
+      if (encodeError) throw encodeError;
       encoder.close();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (muxer as any).finalize();

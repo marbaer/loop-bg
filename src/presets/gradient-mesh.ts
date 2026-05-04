@@ -90,12 +90,12 @@ export const gradientMesh: Preset = {
   kind: "shader",
   id: "soft-blobs",
   name: "Soft Blobs",
-  description: "Hand-rolled drifting gradient blobs. Soft, dark, calm.",
+  description: "Drifting color blobs that blur and merge into a soft, glowing field.",
   fragmentShader: fragment,
   schema: [
     { kind: "int", key: "u_blob_count", label: "Blobs", min: 2, max: 8, default: 5 },
     { kind: "range", key: "u_blur", label: "Softness", min: 0.05, max: 0.6, step: 0.01, default: 0.28 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0.1, max: 2.5, step: 0.05, default: 0.6 },
+    { kind: "range", key: "u_speed", label: "Speed", min: 0.25, max: 4.0, step: 0.25, default: 1.5 },
     { kind: "range", key: "u_contrast", label: "Contrast", min: 0.4, max: 2.0, step: 0.05, default: 0.9 },
     { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.018 },
     { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.18 },
@@ -104,7 +104,7 @@ export const gradientMesh: Preset = {
   defaults: {
     u_blob_count: 5,
     u_blur: 0.28,
-    u_speed: 0.6,
+    u_speed: 1.5,
     u_contrast: 0.9,
     u_grain: 0.018,
     u_vignette: 0.18,

@@ -81,12 +81,12 @@ export const aurora: Preset = {
   kind: "shader",
   id: "aurora",
   name: "Aurora",
-  description: "Slow flowing color waves — minimal, premium, very forgiving.",
+  description: "Horizontal color bands that drift and shimmer slowly across the canvas.",
   fragmentShader: fragment,
   schema: [
     { kind: "int", key: "u_bands", label: "Bands", min: 1, max: 5, default: 3 },
     { kind: "range", key: "u_warp", label: "Warp", min: 0, max: 0.4, step: 0.01, default: 0.16 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0.05, max: 1.5, step: 0.05, default: 0.4 },
+    { kind: "range", key: "u_speed", label: "Speed", min: 0.25, max: 4.0, step: 0.25, default: 1.5 },
     { kind: "range", key: "u_drift", label: "Drift", min: 0, max: 1, step: 0.05, default: 0.45 },
     { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.022 },
     { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.22 },
@@ -95,7 +95,7 @@ export const aurora: Preset = {
   defaults: {
     u_bands: 3,
     u_warp: 0.16,
-    u_speed: 0.4,
+    u_speed: 1.5,
     u_drift: 0.45,
     u_grain: 0.022,
     u_vignette: 0.22,

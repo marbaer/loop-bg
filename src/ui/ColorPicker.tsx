@@ -56,7 +56,13 @@ export function ColorPicker() {
           step={0.01}
           value={bgLightness}
           onChange={(e) => setBgLightness(parseFloat(e.target.value))}
+          onInput={(e) => {
+            const target = e.target as HTMLInputElement;
+            const percent = ((parseFloat(target.value) - parseFloat(target.min)) / (parseFloat(target.max) - parseFloat(target.min))) * 100;
+            target.style.setProperty('--slider-fill', `${percent}%`);
+          }}
           className="w-full accent-accent"
+          style={{ '--slider-fill': `${bgLightness * 100}%` } as React.CSSProperties}
         />
       </label>
 

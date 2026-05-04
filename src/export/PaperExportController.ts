@@ -19,17 +19,24 @@ export interface PaperExportResult {
 }
 
 /** Mounts the paper-design React component into a hidden DOM container at
- *  export resolution, captures frames in real time, and feeds them into the
- *  existing WebCodecs encoder.
+ *  export resolution and drives its shader DETERMINISTICALLY via
+ *  ShaderMount.setFrame(ms), which performs a synchronous render. We then
+ *  snapshot the canvas and feed the frame into the WebCodecs encoder.
+ *
+ *  Why deterministic and not real-time capture:
+ *  paper-design's ShaderMount listens to document visibilitychange and pauses
+ *  its rAF loop when document.hidden is true. Real-time capture would freeze
+ *  whenever the user switched tabs / the OS hid the window, producing static
+ *  sections in the exported video. setFrame() bypasses rAF entirely, so
+ *  exports are immune to focus/visibility changes and finish as fast as the
+ *  GPU + encoder can chew through frames.
  *
  *  Loop mode:
- *  - "linear": straightforward real-time capture for the full duration. Loop
- *    seamlessness depends on the shader's natural periodicity (most paper
- *    shaders drift forward, so this won't loop perfectly).
- *  - "ping-pong": capture the first half forward into ImageBitmaps, then
- *    encode them in reverse for the second half. The result is guaranteed
- *    seamless because frame[N] == frame[0] by construction. Wall-time is
- *    duration/2 for capture + small encode overhead. */
+ *  - "linear": straightforward forward stepping. Loop seamlessness depends on
+ *    the shader's natural periodicity (most paper shaders drift forward, so
+ *    this won't loop perfectly).
+ *  - "ping-pong": render the first half forward, then re-render the same
+ *    frame indices in reverse for the second half. Seamless by construction. */
 export async function runPaperExport(args: PaperExportArgs): Promise<PaperExportResult> {
   const { preset, componentProps, config, onProgress } = args;
   const caps = await detectCapabilities();
@@ -53,7 +60,6 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
   document.body.appendChild(host);
 
   let root: Root | null = null;
-  const captured: ImageBitmap[] = [];
   try {
     root = createRoot(host);
     root.render(
@@ -64,6 +70,18 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
     );
 
     const canvas = await waitForCanvas(host, width, height, 3000);
+
+    // ShaderMount attaches itself to the parent <div> paper-design wraps
+    // around the canvas. Grab it so we can drive frames synchronously.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mount: any = (canvas.parentElement as any)?.paperShaderMount;
+    if (!mount || typeof mount.setFrame !== "function") {
+      throw new Error("Paper shader mount not found on canvas parent");
+    }
+    // Stop the auto-rAF loop so only our explicit setFrame calls advance time.
+    mount.setSpeed(0);
+
+    const speed = typeof componentProps.speed === "number" ? componentProps.speed : 1;
     const totalFrames = Math.round(config.durationSeconds * config.fps);
     const enc = await createWebCodecsEncoder({
       width,
@@ -75,53 +93,30 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
       onProgress,
     });
 
-    const frameInterval = 1000 / config.fps;
+    // ShaderMount frames are "milliseconds from zero since animation start"
+    // and the auto-rAF loop multiplies elapsed time by speed. Replicate that
+    // here so a 10s export at speed=2 covers the same animation distance as
+    // 10s of preview at speed=2.
+    const frameToMs = (frameIdx: number) => (frameIdx * 1000 * speed) / config.fps;
 
     if (config.loopMode === "ping-pong") {
-      // Capture the FORWARD half. We need ceil(totalFrames/2) so the math
-      // works out for both even and odd totals.
       const halfFrames = Math.ceil(totalFrames / 2);
-      let lastTickAt = performance.now();
+      // Forward: 0 .. halfFrames-1
       for (let i = 0; i < halfFrames; i++) {
-        const target = lastTickAt + frameInterval;
-        while (performance.now() < target) {
-          await new Promise((r) => setTimeout(r, 0));
-        }
-        lastTickAt = target;
-        // Snapshot the live canvas. createImageBitmap is GPU-friendly and
-        // cheaper than getImageData/PNG.
-        const bmp = await createImageBitmap(canvas);
-        captured.push(bmp);
-        onProgress?.(i + 1, totalFrames);
+        mount.setFrame(frameToMs(i));
+        await enc.encodeFrame(canvas, i);
       }
-
-      // Encode FORWARD: 0 .. halfFrames-1
-      for (let i = 0; i < halfFrames; i++) {
-        await enc.encodeFrame(captured[i], i);
-      }
-      // Encode REVERSE for the second half. Skip the boundary frame
-      // (halfFrames-1 already played) so motion is smooth at the turnaround,
-      // and skip frame 0 so when the video loops, frame 0 doesn't repeat.
-      // Forward played: 0,1,...,H-1
-      // Reverse plays: H-2, H-3, ..., 1, 0   (H-1 frames)
-      // Total: H + (H-1) = 2H-1
-      // We need exactly totalFrames; pad/trim by adjusting the reverse range.
+      // Reverse: halfFrames-2 .. 0, re-rendering each frame deterministically.
+      // setFrame is pure (same input → same output), so no need to buffer.
       const reverseFramesNeeded = totalFrames - halfFrames;
       for (let r = 0; r < reverseFramesNeeded; r++) {
-        // Map r=0..reverseFramesNeeded-1 to source indices halfFrames-2..end.
-        // Clamp at 0 to handle the unlikely case where reverseFramesNeeded > halfFrames-1.
         const sourceIdx = Math.max(0, halfFrames - 2 - r);
-        await enc.encodeFrame(captured[sourceIdx], halfFrames + r);
+        mount.setFrame(frameToMs(sourceIdx));
+        await enc.encodeFrame(canvas, halfFrames + r);
       }
     } else {
-      // Linear: real-time capture, encode each frame as it arrives.
-      let lastTickAt = performance.now();
       for (let i = 0; i < totalFrames; i++) {
-        const target = lastTickAt + frameInterval;
-        while (performance.now() < target) {
-          await new Promise((r) => setTimeout(r, 0));
-        }
-        lastTickAt = target;
+        mount.setFrame(frameToMs(i));
         await enc.encodeFrame(canvas, i);
       }
     }
@@ -132,13 +127,6 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
     const filename = `loop-bg-${preset.id}-${width}x${height}-${stamp}.${ext}`;
     return { blob, filename };
   } finally {
-    for (const bmp of captured) {
-      try {
-        bmp.close();
-      } catch {
-        /* noop */
-      }
-    }
     if (root) {
       try {
         root.unmount();

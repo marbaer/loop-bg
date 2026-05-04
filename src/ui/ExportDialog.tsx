@@ -78,12 +78,12 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       <div className="w-[440px] rounded-lg border border-border bg-surface-popover p-5 text-text shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-text">Export video</h2>
-          <button onClick={onClose} className="text-text-subtle hover:text-text" aria-label="Close">
+          <button onClick={onClose} disabled={busy} className="text-text-subtle hover:text-text disabled:opacity-30" aria-label="Close">
             ✕
           </button>
         </div>
 
-        <div className="space-y-3">
+        <fieldset disabled={busy} className="space-y-3 disabled:opacity-50">
           <Field label="Video length">
             <Segmented
               options={[
@@ -104,7 +104,6 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
                 { v: "1280x720", label: "720p" },
                 { v: "1920x1080", label: "1080p" },
                 { v: "2560x1440", label: "1440p" },
-                { v: "3840x2160", label: "4K" },
               ]}
               value={`${config.width}x${config.height}`}
               onChange={(v) => {
@@ -178,26 +177,27 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
             </div>
           )}
 
-          {error && (
-            <div className="rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-              {error}
-            </div>
-          )}
+        </fieldset>
 
-          {busy && (
-            <div className="space-y-1.5">
-              <div className="h-1.5 overflow-hidden rounded-full bg-overlay-2">
-                <div
-                  className="h-full bg-accent transition-[width] duration-100"
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
-              <div className="text-xs text-text-subtle">
-                Encoding… {Math.round(progress * 100)}%
-              </div>
+        {error && (
+          <div className="mt-3 rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+            {error}
+          </div>
+        )}
+
+        {busy && (
+          <div className="mt-3 space-y-1.5">
+            <div className="h-1.5 overflow-hidden rounded-full bg-overlay-2">
+              <div
+                className="h-full bg-accent transition-[width] duration-100"
+                style={{ width: `${progress * 100}%` }}
+              />
             </div>
-          )}
-        </div>
+            <div className="text-xs text-text-subtle">
+              Encoding… {Math.round(progress * 100)}%
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 flex justify-end gap-2">
           <button

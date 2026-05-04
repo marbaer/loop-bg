@@ -28,9 +28,14 @@ uniform float u_vignette;
 
 void main() {
   vec2 uv = v_uv;
-  // Backmost layer always fills the entire canvas — that's the deepest
-  // shade. Subsequent layers paint OVER it, each clipped by its own curve.
-  vec3 color = u_layer_colors[0];
+
+  // Grain orbit: one full circle per loop — perfectly periodic, no intcyc needed.
+  vec2 grainOrbit = vec2(cos(6.28318530718 * u_t), sin(6.28318530718 * u_t)) * 50.0;
+
+  // Layer 0 fills the entire canvas. Apply its own grain pass now so it gets
+  // the same per-layer treatment as the rest.
+  float bg_g = (vnoise(gl_FragCoord.xy * 0.7 + grainOrbit) - 0.5) * u_grain;
+  vec3 color = u_layer_colors[0] + vec3(bg_g);
 
   float baseCyc = intcyc(u_speed);
   int n = int(u_layer_count);
@@ -79,10 +84,19 @@ void main() {
     // everything below that curve, with a 1-pixel AA edge.
     float coverage = 1.0 - smoothstep(-aa, aa, uv.y - yEdge);
 
-    color = mix(color, u_layer_colors[i], coverage);
+    // Per-layer grain: each layer uses a different spatial offset and a
+    // randomly scaled amplitude so the layers look like distinct physical
+    // materials rather than one uniform texture.
+    float grainMult = mix(0.4, 1.8, hash21(vec2(seed, 0.97)));
+    float g = (vnoise(gl_FragCoord.xy * 0.7 + grainOrbit + fi * vec2(17.3, 61.7)) - 0.5)
+              * u_grain * grainMult;
+
+    color = mix(color, u_layer_colors[i] + vec3(g), coverage);
   }
 
-  color = finish(color, uv, gl_FragCoord.xy, u_t, u_grain, u_vignette);
+  // Grain already applied per-layer above; pass 0 here so finish() only
+  // handles vignette, tone curve, and dither.
+  color = finish(color, uv, gl_FragCoord.xy, u_t, 0.0, u_vignette);
   fragColor = vec4(color, 1.0);
 }
 `;
@@ -142,8 +156,8 @@ export const layers: Preset = {
     { kind: "range", key: "u_direction", label: "Light → dark direction", min: 0, max: 1, step: 1, default: 0 },
     { kind: "range", key: "u_amp", label: "Wave amp", min: 0.02, max: 0.35, step: 0.01, default: 0.16 },
     { kind: "range", key: "u_tilt", label: "Tilt", min: 0, max: 0.6, step: 0.02, default: 0.28 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0.05, max: 1.5, step: 0.05, default: 0.25 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.008 },
+    { kind: "range", key: "u_speed", label: "Speed", min: 0.5, max: 8.0, step: 0.5, default: 3.0 },
+    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.015 },
     { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.0 },
     { kind: "seed", key: "u_seed", label: "Seed", default: 0.81 },
   ],
@@ -154,8 +168,8 @@ export const layers: Preset = {
     u_direction: 0,
     u_amp: 0.16,
     u_tilt: 0.28,
-    u_speed: 0.25,
-    u_grain: 0.008,
+    u_speed: 3.0,
+    u_grain: 0.015,
     u_vignette: 0.0,
     u_seed: 0.81,
   },
