@@ -37,7 +37,8 @@ void main() {
   float bg_g = (vnoise(gl_FragCoord.xy * 0.7 + grainOrbit) - 0.5) * u_grain;
   vec3 color = u_layer_colors[0] + vec3(bg_g);
 
-  float baseCyc = intcyc(u_speed);
+  // Fixed integer cycle count — JS scales u_t by speed for smooth + static-at-0.
+  float baseCyc = 1.0;
   int n = int(u_layer_count);
 
   // Crisp edges: pixel AA only.
@@ -156,7 +157,7 @@ export const layers: Preset = {
     { kind: "range", key: "u_direction", label: "Light → dark direction", min: 0, max: 1, step: 1, default: 0 },
     { kind: "range", key: "u_amp", label: "Wave amp", min: 0.02, max: 0.35, step: 0.01, default: 0.16 },
     { kind: "range", key: "u_tilt", label: "Tilt", min: 0, max: 0.6, step: 0.02, default: 0.28 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0.5, max: 8.0, step: 0.5, default: 3.0 },
+    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
     { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.015 },
     { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.0 },
     { kind: "seed", key: "u_seed", label: "Seed", default: 0.81 },
@@ -168,7 +169,7 @@ export const layers: Preset = {
     u_direction: 0,
     u_amp: 0.16,
     u_tilt: 0.28,
-    u_speed: 3.0,
+    u_speed: 1.0,
     u_grain: 0.015,
     u_vignette: 0.0,
     u_seed: 0.81,

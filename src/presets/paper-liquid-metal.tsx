@@ -3,6 +3,13 @@ import type { PaperPreset } from "./types";
 
 const d = liquidMetalPresets[0].params;
 
+const customDefaults = {
+  ...d,
+  shape: "metaballs",
+  colorBack: "#16161d",
+  scale: 1.5,
+};
+
 export const paperLiquidMetal: PaperPreset = {
   kind: "paper",
   id: "paper-liquid-metal",
@@ -25,21 +32,21 @@ export const paperLiquidMetal: PaperPreset = {
         { value: "diamond", label: "Diamond" },
         { value: "metaballs", label: "Metaballs" },
       ],
-      default: (d.shape as string) ?? "metaballs",
+      default: "metaballs",
     },
-    { kind: "range", key: "speed", label: "Speed", min: 0, max: 2.5, step: 0.05, default: d.speed },
-    { kind: "range", key: "repetition", label: "Stripe density", min: 1, max: 10, step: 0.1, default: d.repetition },
-    { kind: "range", key: "softness", label: "Softness", min: 0, max: 1, step: 0.01, default: d.softness },
-    { kind: "range", key: "shiftRed", label: "Red shift", min: -1, max: 1, step: 0.02, default: d.shiftRed },
-    { kind: "range", key: "shiftBlue", label: "Blue shift", min: -1, max: 1, step: 0.02, default: d.shiftBlue },
-    { kind: "range", key: "distortion", label: "Distortion", min: 0, max: 1, step: 0.01, default: d.distortion },
-    { kind: "range", key: "contour", label: "Contour", min: 0, max: 1, step: 0.01, default: d.contour },
-    { kind: "range", key: "angle", label: "Angle", min: 0, max: 360, step: 1, default: d.angle },
-    { kind: "range", key: "scale", label: "Scale", min: 0.3, max: 2.5, step: 0.05, default: d.scale ?? 1.0 },
+    { kind: "range", key: "speed", label: "Speed", min: 0, max: 2.5, step: 0.05, default: customDefaults.speed },
+    { kind: "range", key: "repetition", label: "Stripe density", min: 1, max: 10, step: 0.1, default: customDefaults.repetition },
+    { kind: "range", key: "softness", label: "Softness", min: 0, max: 1, step: 0.01, default: customDefaults.softness },
+    { kind: "range", key: "shiftRed", label: "Red shift", min: -1, max: 1, step: 0.02, default: customDefaults.shiftRed },
+    { kind: "range", key: "shiftBlue", label: "Blue shift", min: -1, max: 1, step: 0.02, default: customDefaults.shiftBlue },
+    { kind: "range", key: "distortion", label: "Distortion", min: 0, max: 1, step: 0.01, default: customDefaults.distortion },
+    { kind: "range", key: "contour", label: "Contour", min: 0, max: 1, step: 0.01, default: customDefaults.contour },
+    { kind: "range", key: "angle", label: "Angle", min: 0, max: 360, step: 1, default: customDefaults.angle },
+    { kind: "range", key: "scale", label: "Scale", min: 0.3, max: 2.5, step: 0.05, default: customDefaults.scale },
   ],
-  defaults: { ...d, shape: d.shape ?? "metaballs" },
+  defaults: customDefaults,
   propsFor: (params) => ({
-    shape: params.shape ?? "metaballs",
+    shape: params.shape,
     colorBack: params.colorBack,
     colorTint: params.colorTint,
     speed: params.speed,

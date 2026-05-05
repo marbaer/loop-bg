@@ -4,6 +4,11 @@ import logoImage from "../../public/favicon.png";
 
 const d = heatmapPresets[0].params;
 
+const customDefaults = {
+  ...d,
+  scale: 0.6,
+};
+
 export const paperLogoHeatmap: PaperPreset = {
   kind: "paper",
   id: "paper-logo-heatmap",
@@ -23,9 +28,9 @@ export const paperLogoHeatmap: PaperPreset = {
     { kind: "range", key: "noise", label: "Noise", min: 0, max: 1, step: 0.01, default: d.noise },
     { kind: "range", key: "innerGlow", label: "Inner glow", min: 0, max: 1, step: 0.01, default: d.innerGlow },
     { kind: "range", key: "outerGlow", label: "Outer glow", min: 0, max: 1, step: 0.01, default: d.outerGlow },
-    { kind: "range", key: "scale", label: "Scale", min: 0.3, max: 2.5, step: 0.05, default: d.scale ?? 0.8 },
+    { kind: "range", key: "scale", label: "Scale", min: 0.3, max: 2.5, step: 0.05, default: customDefaults.scale },
   ],
-  defaults: { ...d },
+  defaults: customDefaults,
   propsFor: (params, _palette, image) => ({
     image: image ?? logoImage,
     colors: params.colors,

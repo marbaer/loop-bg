@@ -62,9 +62,18 @@ export async function runExport(args: ExportArgs): Promise<ExportResult> {
     onProgress,
   });
 
+  // For seamless export, the shader must complete an INTEGER number of cycles
+  // over the captured duration. With preview's continuous time-scaling we get
+  // smooth speed control, but export captures a fixed number of frames — so we
+  // snap effective cycles to the nearest integer (≥1, or 0 for static).
+  const rawSpeed = typeof (params as Record<string, unknown>).u_speed === "number"
+    ? ((params as Record<string, unknown>).u_speed as number)
+    : 1;
+  const cycles = rawSpeed === 0 ? 0 : Math.max(1, Math.round(rawSpeed));
   for (let i = 0; i < totalFrames; i++) {
     const t = i / totalFrames; // critical: not i/(totalFrames-1)
-    renderer.render(preset, params, palette, t, width, height);
+    const tScaled = cycles === 0 ? 0 : (t * cycles) % 1;
+    renderer.render(preset, params, palette, tScaled, width, height);
     // Read GPU work into a VideoFrame via the canvas itself.
     await enc.encodeFrame(offscreen, i);
   }

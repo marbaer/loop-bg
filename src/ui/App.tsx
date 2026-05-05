@@ -126,7 +126,7 @@ function ShaderPreview() {
     }
     const loop = new PreviewLoop(
       canvas,
-      ({ t, width, height }) => {
+      ({ progress, width, height }) => {
         const renderer = rendererRef.current;
         if (!renderer) return;
         const s = useStore.getState();
@@ -137,7 +137,12 @@ function ShaderPreview() {
           bgLightness: s.bgLightness,
           overrides: s.paletteOverrides,
         });
-        renderer.render(presetNow, p, palette, t, width, height);
+        // Scale time BEFORE wrapping so fractional speeds wrap at shader-loop
+        // boundaries (every 1/speed wall-clock loops). Otherwise the wrapped
+        // `t` would jump from speed→0 each duration and break the seam.
+        const speed = typeof p.u_speed === "number" ? p.u_speed : 1;
+        const tScaled = (progress * speed) % 1;
+        renderer.render(presetNow, p, palette, tScaled, width, height);
       },
       () => useStore.getState().durationSeconds * 1000
     );

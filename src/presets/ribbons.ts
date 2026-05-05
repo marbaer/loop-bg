@@ -58,8 +58,9 @@ void main() {
 
   // Two domain-warp octaves with integer cycle counts in t — these are the
   // entire visual identity. Slow, large warps give Apple-keynote sweep.
-  float c1 = intcyc(u_speed * 1.0);
-  float c2 = intcyc(u_speed * 1.0 + 1.0);
+  // Fixed integer cycle counts — JS scales u_t by speed for smooth + static-at-0.
+  float c1 = 1.0;
+  float c2 = 2.0;
 
   vec2 q1 = vec2(
     pfbm2(p * u_warp_scale + u_seed, fract(u_t * c1), 0.55),
@@ -133,26 +134,26 @@ export const ribbons: Preset = {
     { kind: "int", key: "u_stop_count", label: "Color stops", min: 3, max: 8, default: 5 },
     { kind: "range", key: "u_hue_spread", label: "Hue spread", min: 0, max: 1, step: 0.01, default: 0.45 },
     { kind: "range", key: "u_lift", label: "Brightness", min: -0.2, max: 0.3, step: 0.01, default: 0.05 },
-    { kind: "range", key: "u_warp", label: "Warp", min: 0, max: 1.4, step: 0.02, default: 0.55 },
+    { kind: "range", key: "u_warp", label: "Warp", min: 0, max: 1.4, step: 0.02, default: 0.56 },
     { kind: "range", key: "u_warp_scale", label: "Warp scale", min: 0.4, max: 2.5, step: 0.05, default: 1.1 },
     { kind: "range", key: "u_angle", label: "Angle", min: 0, max: 1, step: 0.01, default: 0.18 },
     { kind: "range", key: "u_smoothness", label: "Smoothness", min: 0, max: 1, step: 0.02, default: 0.6 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0.5, max: 8.0, step: 0.5, default: 3.0 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.012 },
-    { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.15 },
+    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
+    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.010 },
+    { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.16 },
     { kind: "seed", key: "u_seed", label: "Seed", default: 0.91 },
   ],
   defaults: {
     u_stop_count: 5,
     u_hue_spread: 0.45,
     u_lift: 0.05,
-    u_warp: 0.55,
+    u_warp: 0.56,
     u_warp_scale: 1.1,
     u_angle: 0.18,
     u_smoothness: 0.6,
-    u_speed: 3.0,
-    u_grain: 0.012,
-    u_vignette: 0.15,
+    u_speed: 1.0,
+    u_grain: 0.010,
+    u_vignette: 0.16,
     u_seed: 0.91,
   },
   uniforms: (params, palette) => ({

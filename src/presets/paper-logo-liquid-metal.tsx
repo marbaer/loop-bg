@@ -4,6 +4,11 @@ import logoImage from "../../public/favicon.png";
 
 const d = liquidMetalPresets[0].params;
 
+const customDefaults = {
+  ...d,
+  colorBack: "#16161d",
+};
+
 export const paperLogoLiquidMetal: PaperPreset = {
   kind: "paper",
   id: "paper-logo-liquid-metal",
@@ -27,7 +32,7 @@ export const paperLogoLiquidMetal: PaperPreset = {
     { kind: "range", key: "angle", label: "Angle", min: 0, max: 360, step: 1, default: d.angle },
     { kind: "range", key: "scale", label: "Scale", min: 0.3, max: 2.5, step: 0.05, default: d.scale ?? 0.7 },
   ],
-  defaults: { ...d },
+  defaults: customDefaults,
   propsFor: (params, _palette, image) => ({
     image: image ?? logoImage,
     shape: undefined,

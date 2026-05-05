@@ -29,8 +29,9 @@ float band(vec2 uv, float ypos, float thickness, float warpAmt, float seed) {
   vec2 p = vec2(uv.x * 2.4, uv.y * 1.5) + seed;
   // pnoise2/pfbm2 are periodic in their t argument with period 1 — so we must
   // pass an integer-multiplied u_t (not u_t * fractional_speed).
-  float warpCyc = intcyc(u_speed * 2.0);
-  float driftCyc = intcyc(u_speed * 1.0);
+  // Cycle counts are fixed integers — JS scales u_t by speed, so the slider feels smooth and 0 is fully static.
+  float warpCyc = 2.0;
+  float driftCyc = 1.0;
   float tw = u_t * warpCyc;
   // domain warp via two periodic noise samples
   float w1 = pfbm2(p, fract(tw), 0.6);
@@ -86,18 +87,18 @@ export const aurora: Preset = {
   schema: [
     { kind: "int", key: "u_bands", label: "Bands", min: 1, max: 5, default: 3 },
     { kind: "range", key: "u_warp", label: "Warp", min: 0, max: 0.4, step: 0.01, default: 0.16 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0.25, max: 4.0, step: 0.25, default: 1.5 },
+    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
     { kind: "range", key: "u_drift", label: "Drift", min: 0, max: 1, step: 0.05, default: 0.45 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.022 },
+    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.020 },
     { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.22 },
     { kind: "seed", key: "u_seed", label: "Seed", default: 0.42 },
   ],
   defaults: {
     u_bands: 3,
     u_warp: 0.16,
-    u_speed: 1.5,
+    u_speed: 1.0,
     u_drift: 0.45,
-    u_grain: 0.022,
+    u_grain: 0.020,
     u_vignette: 0.22,
     u_seed: 0.42,
   },

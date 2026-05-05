@@ -140,8 +140,15 @@ export const useStore = create<AppState>((set, get) => ({
     const id = get().presetId;
     const preset = presets.find((p) => p.id === id);
     if (!preset) return;
+    const schemaKeys = new Set(preset.schema.map((p) => p.key));
+    const schemaDefaults = Object.fromEntries(
+      Object.entries(preset.defaults).filter(([k]) => schemaKeys.has(k))
+    );
     set((s) => ({
-      paramsByPreset: { ...s.paramsByPreset, [id]: { ...preset.defaults } },
+      paramsByPreset: {
+        ...s.paramsByPreset,
+        [id]: { ...s.paramsByPreset[id], ...schemaDefaults },
+      },
     }));
   },
 }));

@@ -1,7 +1,12 @@
 import { Renderer } from "./Renderer";
 
 export interface PreviewFrameContext {
+  /** Wrapped at 1 — convenient for callers that don't care about speed scaling. */
   t: number;
+  /** Raw monotonic progress = elapsed / duration (NOT wrapped). Callers that
+   *  scale time by a speed factor must use this and wrap themselves, otherwise
+   *  fractional speeds produce a seam each time wrapped `t` wraps. */
+  progress: number;
   width: number;
   height: number;
 }
@@ -36,12 +41,13 @@ export class PreviewLoop {
     const tick = () => {
       const now = performance.now();
       const dur = Math.max(this.getDurationMs(), 1);
-      const t = ((now - this.startTime) / dur) % 1;
+      const progress = (now - this.startTime) / dur;
+      const t = progress % 1;
       const rect = this.canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = Math.max(2, Math.floor(rect.width * dpr));
       const h = Math.max(2, Math.floor(rect.height * dpr));
-      this.renderFn({ t, width: w, height: h });
+      this.renderFn({ t, progress, width: w, height: h });
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);
