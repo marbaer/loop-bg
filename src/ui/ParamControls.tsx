@@ -33,7 +33,7 @@ function Control({
     const current = typeof value === "string" ? value : schema.default;
     return (
       <div>
-        <div className="mb-1 text-xs text-text-muted">{schema.label}</div>
+        <div className="mb-1 text-sm text-text-muted">{schema.label}</div>
         <div className="flex flex-wrap gap-1">
           {schema.options.map((opt) => {
             const active = opt.value === current;
@@ -42,7 +42,7 @@ function Control({
                 key={opt.value}
                 onClick={() => onChange(opt.value)}
                 className={
-                  "rounded-sm border px-2 py-1 text-xs transition " +
+                  "rounded-sm border px-2 py-1 text-sm transition " +
                   (active
                     ? "border-accent/60 bg-accent/15 text-text"
                     : "border-border bg-overlay-1 text-text-muted hover:border-border-strong")
@@ -69,7 +69,7 @@ function Control({
   if (schema.kind === "seed") {
     return (
       <div className="flex items-center justify-between">
-        <span className="text-xs text-text-muted">{schema.label}</span>
+        <span className="text-sm text-text-muted">{schema.label}</span>
         <button
           onClick={() => onChange(Math.random() * 100)}
           className="rounded-sm border border-border px-2 py-1 font-mono text-xs text-text hover:border-border-strong hover:bg-overlay-2"
@@ -83,7 +83,7 @@ function Control({
   const fmt = schema.kind === "int" ? numericValue.toFixed(0) : numericValue.toFixed(2);
   return (
     <label className="block">
-      <div className="mb-1 flex items-center justify-between text-xs">
+      <div className="mb-1 flex items-center justify-between text-sm">
         <span className="text-text-muted">{schema.label}</span>
         <span className="font-mono text-xs text-text-subtle">{fmt}</span>
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useStore, useActivePreset, useActiveParams } from "../state/store";
+import { useStore, useActivePreset, useActiveParams, ASPECT_RATIO_RESOLUTIONS } from "../state/store";
 import { buildPalette } from "../color/palette";
 import { runExport, downloadBlob } from "../export/ExportController";
 import { runPaperExport } from "../export/PaperExportController";
@@ -8,6 +8,8 @@ import { detectCapabilities, type ExportCapabilities } from "../export/capabilit
 export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const config = useStore((s) => s.exportConfig);
   const setConfig = useStore((s) => s.setExportConfig);
+  const aspectRatio = useStore((s) => s.aspectRatio);
+  const resolutions = ASPECT_RATIO_RESOLUTIONS[aspectRatio];
   const duration = useStore((s) => s.durationSeconds);
   const setDuration = useStore((s) => s.setDuration);
   const accentHex = useStore((s) => s.accentHex);
@@ -31,9 +33,15 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
     }
   }, [open]);
 
-  if (!open) return null;
+  // If caps loaded and the currently-selected format isn't supported, fall
+  // back to the one that is.
+  useEffect(() => {
+    if (!caps) return;
+    if (config.format === "mp4" && !caps.h264 && caps.vp9) setConfig({ format: "webm" });
+    else if (config.format === "webm" && !caps.vp9 && caps.h264) setConfig({ format: "mp4" });
+  }, [caps, config.format, setConfig]);
 
-  const totalFrames = Math.round(config.durationSeconds * config.fps);
+  if (!open) return null;
 
   async function onExport() {
     setBusy(true);
@@ -77,7 +85,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover p-5 text-text shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-text">Export video</h2>
+          <h2 className="text-headline font-semibold text-text">Export video</h2>
           <button onClick={onClose} disabled={busy} className="text-text-subtle hover:text-text disabled:opacity-30" aria-label="Close">
             ✕
           </button>
@@ -100,11 +108,10 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
           <Field label="Resolution">
             <Segmented
-              options={[
-                { v: "1280x720", label: "720p" },
-                { v: "1920x1080", label: "1080p" },
-                { v: "2560x1440", label: "1440p" },
-              ]}
+              options={resolutions.map((r) => ({
+                v: `${r.width}x${r.height}`,
+                label: r.label,
+              }))}
               value={`${config.width}x${config.height}`}
               onChange={(v) => {
                 const [w, h] = v.split("x").map(Number);
@@ -139,8 +146,18 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           <Field label="Format">
             <Segmented
               options={[
-                { v: "mp4", label: "MP4 / H.264" },
-                { v: "webm", label: "WebM / VP9" },
+                {
+                  v: "mp4",
+                  label: "MP4 / H.264",
+                  disabled: !!caps && !caps.h264,
+                  title: !!caps && !caps.h264 ? "H.264 not supported in this browser" : undefined,
+                },
+                {
+                  v: "webm",
+                  label: "WebM / VP9",
+                  disabled: !!caps && !caps.vp9,
+                  title: !!caps && !caps.vp9 ? "VP9 not supported in this browser" : undefined,
+                },
               ]}
               value={config.format}
               onChange={(v) => setConfig({ format: v as "mp4" | "webm" })}
@@ -148,7 +165,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           </Field>
 
           {preset.kind === "paper" && (
-            <Field label="Loop">
+            <Field label="Playback">
               <Segmented
                 options={[
                   { v: "ping-pong", label: "Ping-pong (seamless)" },
@@ -162,25 +179,15 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
                   ? `Captures ${Math.ceil(config.durationSeconds / 2)}s forward, plays remaining ${
                       config.durationSeconds - Math.ceil(config.durationSeconds / 2)
                     }s in reverse → seamless`
-                  : "Real-time capture; loop seamlessness depends on shader periodicity"}
+                  : "Frames captured in sequence — first and last frames won't match"}
               </div>
             </Field>
-          )}
-
-          <div className="pt-1 text-xs text-text-subtle">
-            {totalFrames} frames · seamless loop
-          </div>
-          {caps && (
-            <div className="text-xs text-text-subtle">
-              WebCodecs: {caps.webCodecs ? "✓" : "✗"} · H.264: {caps.h264 ? "✓" : "✗"} · VP9:{" "}
-              {caps.vp9 ? "✓" : "✗"}
-            </div>
           )}
 
         </fieldset>
 
         {error && (
-          <div className="mt-3 rounded border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+          <div className="mt-3 rounded border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
           </div>
         )}
@@ -203,14 +210,14 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           <button
             onClick={onClose}
             disabled={busy}
-            className="rounded border border-border px-3 py-1.5 text-xs text-text-muted hover:border-border-strong hover:text-text disabled:opacity-50"
+            className="rounded border border-border px-3 py-1.5 text-sm text-text-muted hover:border-border-strong hover:text-text disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={onExport}
             disabled={busy}
-            className="rounded bg-accent px-4 py-1.5 text-xs font-medium text-accent-text hover:opacity-90 disabled:opacity-50"
+            className="rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-text hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Encoding…" : "Export"}
           </button>
@@ -234,7 +241,7 @@ function Segmented<T extends string>({
   value,
   onChange,
 }: {
-  options: { v: T; label: string }[];
+  options: { v: T; label: string; disabled?: boolean; title?: string }[];
   value: T;
   onChange: (v: T) => void;
 }) {
@@ -244,11 +251,15 @@ function Segmented<T extends string>({
         <button
           key={o.v}
           onClick={() => onChange(o.v)}
+          disabled={o.disabled}
+          title={o.title}
           className={
-            "flex-1 rounded-sm border px-2 py-1.5 text-xs transition " +
-            (value === o.v
-              ? "border-accent/60 bg-accent/15 text-text"
-              : "border-border bg-overlay-1 text-text-muted hover:border-border-strong")
+            "flex-1 rounded-sm border px-2 py-1.5 text-sm transition " +
+            (o.disabled
+              ? "cursor-not-allowed border-border bg-overlay-1 text-text-subtle/50"
+              : value === o.v
+                ? "border-accent/60 bg-accent/15 text-text"
+                : "border-border bg-overlay-1 text-text-muted hover:border-border-strong")
           }
         >
           {o.label}

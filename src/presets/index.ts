@@ -14,7 +14,7 @@ import { paperDithering } from "./paper-dithering";
 import { paperLogoLiquidMetal } from "./paper-logo-liquid-metal";
 import { paperLogoHeatmap } from "./paper-logo-heatmap";
 import { paperLogoGemSmoke } from "./paper-logo-gem-smoke";
-import { gradientMesh as softBlobs } from "./gradient-mesh";
+import { softBlobs } from "./soft-blobs";
 import { aurora } from "./aurora";
 import { ribbons } from "./ribbons";
 import { layers } from "./layers";

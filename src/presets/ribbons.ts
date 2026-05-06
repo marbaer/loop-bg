@@ -1,8 +1,5 @@
 import type { Preset } from "./types";
-import { converter, parse } from "culori";
-
-const toOklch = converter("oklch");
-const toRgb = converter("rgb");
+import { hexToRgbTriple } from "../color/palette";
 
 // "Smooth flowing gradient" — NOT literal ribbons. The image is a single
 // multi-stop OKLCH gradient sampled along a domain-warped diagonal coordinate.
@@ -90,63 +87,26 @@ void main() {
 }
 `;
 
-interface Oklch {
-  l: number;
-  c: number;
-  h: number;
-}
-
-function clampOk(o: Oklch): Oklch {
-  return { l: Math.max(0, Math.min(1, o.l)), c: Math.max(0, Math.min(0.32, o.c)), h: o.h };
-}
-
-function buildStops(primaryHex: string, count: number, hueSpread: number, lift: number): Float32Array {
-  const accent = (toOklch(parse(primaryHex)) as unknown as Oklch | undefined) ?? { l: 0.65, c: 0.18, h: 250 };
-  const out = new Float32Array(8 * 3);
-  // Spread hues symmetrically around the accent hue. spread=1 → 280° fan
-  // (a full vivid rainbow); spread=0 → all stops the same hue (a one-color
-  // gradient driven only by lightness).
-  const spreadDeg = hueSpread * 280;
-  for (let i = 0; i < count; i++) {
-    const t = count > 1 ? i / (count - 1) - 0.5 : 0;
-    const hue = ((accent.h ?? 0) + t * spreadDeg + 720) % 360;
-    // Modulate lightness across the gradient so stops don't all sit at the
-    // same L (which would produce a flat-looking ramp). taste: a slight wave
-    // through L creates the "depth" you see in #1 and #3.
-    const lWave = Math.cos((i / Math.max(1, count - 1)) * Math.PI) * 0.18;
-    const l = clampOk({ l: (accent.l ?? 0.6) + lWave + lift * 0.2, c: 0, h: 0 }).l;
-    const c = Math.min(0.32, (accent.c ?? 0.18) * 1.1);
-    const rgb = toRgb({ mode: "oklch", l, c, h: hue });
-    out[i * 3] = rgb?.r ?? 0;
-    out[i * 3 + 1] = rgb?.g ?? 0;
-    out[i * 3 + 2] = rgb?.b ?? 0;
-  }
-  return out;
-}
-
 export const ribbons: Preset = {
   kind: "shader",
   id: "ribbons",
   name: "Ribbons",
   description: "A flowing, domain-warped gradient that shifts through color as it moves.",
   fragmentShader: fragment,
+  colorSlots: [
+    { kind: "colorArray", key: "colors", label: "Color stops", minCount: 2, maxCount: 8 },
+  ],
   schema: [
-    { kind: "int", key: "u_stop_count", label: "Color stops", min: 3, max: 8, default: 5 },
-    { kind: "range", key: "u_hue_spread", label: "Hue spread", min: 0, max: 1, step: 0.01, default: 0.45 },
-    { kind: "range", key: "u_lift", label: "Brightness", min: -0.2, max: 0.3, step: 0.01, default: 0.05 },
-    { kind: "range", key: "u_warp", label: "Warp", min: 0, max: 1.4, step: 0.02, default: 0.56 },
+    { kind: "range", key: "u_warp",       label: "Warp",       min: 0,   max: 1.4, step: 0.02, default: 0.56 },
     { kind: "range", key: "u_warp_scale", label: "Warp scale", min: 0.4, max: 2.5, step: 0.05, default: 1.1 },
-    { kind: "range", key: "u_angle", label: "Angle", min: 0, max: 1, step: 0.01, default: 0.18 },
-    { kind: "range", key: "u_smoothness", label: "Smoothness", min: 0, max: 1, step: 0.02, default: 0.6 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.010 },
-    { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.16 },
-    { kind: "seed", key: "u_seed", label: "Seed", default: 0.91 },
+    { kind: "range", key: "u_angle",      label: "Angle",      min: 0,   max: 1,   step: 0.01, default: 0.18 },
+    { kind: "range", key: "u_smoothness", label: "Smoothness", min: 0,   max: 1,   step: 0.02, default: 0.6 },
+    { kind: "range", key: "u_speed",      label: "Speed",      min: 0,   max: 2.5, step: 0.1,  default: 1.0 },
+    { kind: "range", key: "u_grain",      label: "Grain",      min: 0,   max: 0.06, step: 0.005, default: 0.010 },
+    { kind: "range", key: "u_vignette",   label: "Vignette",   min: 0,   max: 0.6, step: 0.02, default: 0.16 },
+    { kind: "seed",  key: "u_seed",       label: "Seed",       default: 0.91 },
   ],
   defaults: {
-    u_stop_count: 5,
-    u_hue_spread: 0.45,
-    u_lift: 0.05,
     u_warp: 0.56,
     u_warp_scale: 1.1,
     u_angle: 0.18,
@@ -155,22 +115,28 @@ export const ribbons: Preset = {
     u_grain: 0.010,
     u_vignette: 0.16,
     u_seed: 0.91,
+    colors: ["#4338ca", "#7c3aed", "#6366f1", "#818cf8", "#a5b4fc"],
   },
-  uniforms: (params, palette) => ({
-    u_stop_count: params.u_stop_count,
-    u_warp: params.u_warp,
-    u_warp_scale: params.u_warp_scale,
-    u_angle: params.u_angle,
-    u_smoothness: params.u_smoothness,
-    u_speed: params.u_speed,
-    u_grain: params.u_grain,
-    u_vignette: params.u_vignette,
-    u_seed: params.u_seed,
-    u_stops: buildStops(
-      palette.primary,
-      Math.max(3, Math.min(8, Math.round(params.u_stop_count))),
-      params.u_hue_spread,
-      params.u_lift
-    ),
-  }),
+  uniforms: (params) => {
+    const hexArr = Array.isArray(params.colors) ? (params.colors as string[]) : [];
+    const count = Math.max(2, Math.min(8, hexArr.length));
+    const stops = new Float32Array(8 * 3);
+    for (let i = 0; i < count; i++) {
+      const [r, g, b] = hexToRgbTriple(hexArr[i] ?? "#000000");
+      stops[i * 3] = r; stops[i * 3 + 1] = g; stops[i * 3 + 2] = b;
+    }
+    return {
+      u_warp:        params.u_warp,
+      u_warp_scale:  params.u_warp_scale,
+      u_angle:       params.u_angle,
+      u_smoothness:  params.u_smoothness,
+      u_speed:       params.u_speed,
+      u_grain:       params.u_grain,
+      u_vignette:    params.u_vignette,
+      u_seed:        params.u_seed,
+      u_stop_count:  count,
+      u_stops:       stops,
+      u_palette_bg:  hexToRgbTriple(hexArr[0] ?? "#4338ca"),
+    };
+  },
 };

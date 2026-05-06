@@ -20,7 +20,7 @@ export function VariantSelector({ preset }: { preset: PaperPreset }) {
             key={v.name}
             onClick={() => applyVariant(preset.id, v.name, v.params)}
             className={
-              "rounded-sm border px-2 py-1 text-xs transition " +
+              "rounded-sm border px-2 py-1 text-sm transition " +
               (active
                 ? "border-accent/60 bg-accent/15 text-text"
                 : "border-border bg-overlay-1 text-text-muted hover:border-border-strong hover:text-text")

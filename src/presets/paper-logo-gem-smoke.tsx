@@ -1,6 +1,6 @@
 import { GemSmoke, gemSmokePresets } from "@paper-design/shaders-react";
 import type { PaperPreset } from "./types";
-import logoImage from "../../public/favicon.png";
+import logoImage from "../assets/placeholder-logo.png";
 
 const d = gemSmokePresets[0].params;
 

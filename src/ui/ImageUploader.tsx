@@ -50,9 +50,9 @@ export function ImageUploader() {
             }}
           />
         ) : (
-          <div className="text-center text-xs text-text-subtle">
-            <div className="mb-1 text-text">Upload logo</div>
-            <div>PNG / SVG / JPG · click or drop</div>
+          <div className="text-center text-text-subtle">
+            <div className="mb-1 text-sm font-medium text-text">Upload logo</div>
+            <div className="text-xs">PNG / SVG / JPG · click or drop</div>
           </div>
         )}
       </div>

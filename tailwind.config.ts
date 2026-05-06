@@ -6,6 +6,7 @@ const opacityScaled = (rgbVar: string, alphaVar: string) =>
 
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: ["class", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
@@ -38,7 +39,6 @@ export default {
         ],
         headline: [
           "Inter",
-          "Mark Pro",
           "ui-sans-serif",
           "system-ui",
           "sans-serif",
@@ -53,7 +53,7 @@ export default {
       },
       fontSize: {
         xs: ["11px", { lineHeight: "15px" }],
-        sm: ["12px", { lineHeight: "18px" }],
+        sm: ["13px", { lineHeight: "19px" }],
         base: ["14px", { lineHeight: "21px" }],
         headline: ["18px", { lineHeight: "24px" }],
         display: ["24px", { lineHeight: "32px" }],
@@ -64,7 +64,6 @@ export default {
         lg: "12px",
       },
       boxShadow: {
-        // Figma "option-panel" elevation — subtle three-layer shadow.
         panel:
           "0 1px 2px 0 rgba(13,14,19,0.02), 0 2px 6px 0 rgba(13,14,19,0.06), 0 0 0 1px rgba(13,14,19,0.04)",
       },

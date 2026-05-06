@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useStore, useActivePreset, useActiveParams } from "../state/store";
+import { useStore, useActivePreset, useActiveParams, selectShareSnapshot } from "../state/store";
+import { getShareUrl } from "../state/share";
 import { buildPalette } from "../color/palette";
 import { Renderer } from "../render/Renderer";
 import { PreviewLoop } from "../render/PreviewLoop";
@@ -13,9 +14,13 @@ import { ImageUploader } from "./ImageUploader";
 import { VariantSelector } from "./VariantSelector";
 import { ShaderColorControls } from "./ShaderColorControls";
 import { presets } from "../presets";
+import { AspectRatioSwitcher } from "./AspectRatioSwitcher";
+import { BrandKitPanel } from "./BrandKitPanel";
+import { aspectRatioNumber } from "../state/store";
 
 export function App() {
   const [exportOpen, setExportOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const preset = useActivePreset();
   const params = useActiveParams();
   const accent = useStore((s) => s.accentHex);
@@ -24,6 +29,7 @@ export function App() {
   const overrides = useStore((s) => s.paletteOverrides);
   const theme = useStore((s) => s.theme);
   const setTheme = useStore((s) => s.setTheme);
+  const aspectRatio = useStore((s) => s.aspectRatio);
 
   const palette = useMemo(
     () => buildPalette(accent, mode, { bgLightness, overrides }),
@@ -42,8 +48,15 @@ export function App() {
   return (
     <div className="flex min-h-full w-full flex-col bg-surface text-text lg:h-full lg:flex-row">
       <main className="relative flex flex-col items-center justify-center gap-5 bg-surface p-4 lg:flex-1 lg:gap-7 lg:p-6">
-        <div className="relative w-full max-w-[min(100%,calc((100vh-7rem)*16/9))]">
-          <div className="aspect-video w-full overflow-hidden rounded border border-border shadow-panel">
+        <AspectRatioSwitcher />
+        <div
+          className="relative w-full"
+          style={{ maxWidth: `min(100%, calc((100vh - 11rem) * ${aspectRatioNumber(aspectRatio)}))` }}
+        >
+          <div
+            className="w-full overflow-hidden rounded border border-border shadow-panel"
+            style={{ aspectRatio: aspectRatio.replace(":", "/") }}
+          >
             {preset.kind === "shader" ? (
               <ShaderPreview />
             ) : preset.kind === "r3f" ? (
@@ -53,18 +66,33 @@ export function App() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => setExportOpen(true)}
-          disabled={preset.kind === "r3f"}
-          title={preset.kind === "r3f" ? "Export not wired up for R3F presets" : undefined}
-          className="rounded bg-accent px-5 py-2.5 text-base font-medium text-accent-text transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Export video
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setExportOpen(true)}
+            disabled={preset.kind === "r3f"}
+            title={preset.kind === "r3f" ? "Export not wired up for R3F presets" : undefined}
+            className="rounded bg-accent px-5 py-2.5 text-base font-medium text-accent-text transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Export video
+          </button>
+          <button
+            onClick={() => {
+              const snap = selectShareSnapshot(useStore.getState());
+              navigator.clipboard.writeText(getShareUrl(snap)).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }}
+            title="Copy share link"
+            className="rounded border border-border-strong bg-overlay-2 px-4 py-2.5 text-base font-medium text-text transition hover:bg-overlay-3"
+          >
+            {copied ? "Copied!" : "Share"}
+          </button>
+        </div>
       </main>
       <aside className="w-full border-t border-border bg-surface-raised p-4 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-5">
         <header className="mb-5 flex items-center justify-between">
-          <div className="text-base font-semibold text-text">Loop BG</div>
+          <div className="text-headline font-semibold text-text">Loop BG</div>
           <IconButton
             label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -80,13 +108,16 @@ export function App() {
             )}
           </div>
         </Section>
+        <Section title="Saved palettes">
+          <BrandKitPanel />
+        </Section>
         {preset.kind === "paper" && preset.usesImage && (
           <Section title="Logo">
             <ImageUploader />
           </Section>
         )}
         <Section>
-          {preset.kind === "paper" && preset.colorSlots && preset.colorSlots.length > 0 ? (
+          {"colorSlots" in preset && preset.colorSlots && preset.colorSlots.length > 0 ? (
             <ShaderColorControls preset={preset} />
           ) : (
             <ColorPicker />
@@ -108,8 +139,8 @@ export function App() {
   );
 }
 
-/** The legacy shader preview pipeline — only mounted when a shader preset is
- *  active so the WebGL2 context isn't fighting with Three.js's. */
+/** Shader preview pipeline — only mounted when a shader preset is active so
+ *  its WebGL2 context doesn't conflict with R3F's. */
 function ShaderPreview() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);

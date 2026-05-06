@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { useStore, useActiveParams } from "../state/store";
-import type { ColorSlot, PaperPreset } from "../presets/types";
+import type { ColorSlot } from "../presets/types";
 import { shadesFromColor } from "../color/shades";
 import { ColorSwatch } from "./ColorSwatch";
 
 /** Per-shader color controls. Replaces the global brand-palette ColorPicker
  *  for paper-design presets. Each slot maps to one shader color prop (or one
  *  entry in a colors array) and is edited directly into the preset's params. */
-export function ShaderColorControls({ preset }: { preset: PaperPreset }) {
+export function ShaderColorControls({ preset }: { preset: { colorSlots?: ColorSlot[] } }) {
   const params = useActiveParams();
   const setParam = useStore((s) => s.setParam);
   const slots = preset.colorSlots ?? [];
@@ -191,7 +191,7 @@ function ArrayControl({
       </div>
       {shadesPickerOpen && (
         <div className="rounded border border-border bg-overlay-1 p-2 space-y-2">
-          <div className="text-xs text-text-muted">Pick a source color, fill {colors.length} shades:</div>
+          <div className="text-sm text-text-muted">Pick a source color, fill {colors.length} shades:</div>
           <div className="flex items-center gap-2">
             <ColorRow color={shadesSource} onChange={setShadesSource} />
             <button

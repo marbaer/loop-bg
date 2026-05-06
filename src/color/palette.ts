@@ -20,14 +20,14 @@ export interface Palette {
   };
 }
 
-function hexToRgbTriple(hex: string): [number, number, number] {
+export function hexToRgbTriple(hex: string): [number, number, number] {
   const c = toRgb(parse(hex));
   if (!c) return [0, 0, 0];
   return [c.r, c.g, c.b];
 }
 
 function clampOklch(c: Oklch): Oklch {
-  // taste: clamp chroma so out-of-gamut accents don't produce ugly clipping.
+  // Clamp chroma so out-of-gamut accents don't clip.
   const maxC = 0.32;
   return {
     mode: "oklch",
@@ -68,8 +68,6 @@ export function buildPalette(
   const accent = toOklch(parse(accentHex)) ?? { mode: "oklch", l: 0.6, c: 0.18, h: 250 };
   const accentClamped = clampOklch(accent as Oklch);
 
-  // taste: pure black puts too much weight on the foreground. The default dark
-  // bg sits at L=0.16 — still clearly dark, but lets gradients breathe.
   // bgLightness slider remaps within [0.05, 0.42] for dark mode and [0.85, 1.0]
   // for light mode, centered on the default at 0.5.
   const bgL01 = opts.bgLightness ?? 0.5;
@@ -91,8 +89,8 @@ export function buildPalette(
     h: ((accentClamped.h ?? 0) + 30) % 360,
   };
 
-  // Shade ramp around the accent — perceptually-uniform L spacing.
-  // taste: keep chroma high in midtones, drop it at the extremes (matches how good design palettes work).
+  // Shade ramp around the accent — perceptually-uniform L spacing, with chroma
+  // tapered at the extremes.
   const lights = [0.22, 0.4, accentClamped.l, 0.78, 0.94] as const;
   const chromas = [accentClamped.c * 0.4, accentClamped.c * 0.85, accentClamped.c, accentClamped.c * 0.7, accentClamped.c * 0.3];
   const shades = lights.map((l, i) =>

@@ -71,10 +71,8 @@ float smin(float a, float b, float k) {
 
 // ---------- OKLCH / Oklab color mixing ------------------------------------
 // Reference: Björn Ottosson, https://bottosson.github.io/posts/oklab/
-// taste: OKLCH lerp is THE thing that separates premium gradients from muddy ones.
 vec3 srgb_to_oklab(vec3 c) {
-  // assumes input is already linear-ish (we treat shader input as linear sRGB
-  // for simplicity — close enough for color-mix taste improvements at this scale)
+  // assumes input is already linear-ish (treat shader input as linear sRGB)
   float l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
   float m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
   float s = 0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b;

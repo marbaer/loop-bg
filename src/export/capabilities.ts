@@ -33,11 +33,12 @@ export async function detectCapabilities(): Promise<ExportCapabilities> {
   return { webCodecs: hasWC, h264, vp9 };
 }
 
-export function bitrateFor(width: number, height: number, quality: "standard" | "high" | "max"): number {
-  // Mbps target keyed off pixel count, with quality multiplier.
+export function bitrateFor(width: number, height: number, quality: "standard" | "high" | "max", fps: number = 30): number {
+  // Calibrated to observed output: ~4 Mbps @ 1080p / High / 30fps for smooth shader animations.
   const px = width * height;
-  // ~20 Mbps @ 1080p baseline
-  const base = (px / (1920 * 1080)) * 20_000_000;
-  const mult = quality === "standard" ? 0.6 : quality === "high" ? 1.0 : 1.6;
-  return Math.round(base * mult);
+  const base = (px / (1920 * 1080)) * 4_000_000;
+  const qualityMult = quality === "standard" ? 0.6 : quality === "high" ? 1.0 : 1.6;
+  // 60fps is ~1.6× 30fps empirically (not 2×) for this content type.
+  const fpsMult = fps >= 60 ? 1.6 : 1.0;
+  return Math.round(base * qualityMult * fpsMult);
 }

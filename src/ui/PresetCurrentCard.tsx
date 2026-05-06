@@ -60,8 +60,8 @@ export function PresetCurrentCard() {
         <div className="flex items-start gap-2.5">
           <KindBadge kind={preset.kind} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-text">{preset.name}</div>
-            <div className="line-clamp-2 text-xs leading-tight text-text-subtle">
+            <div className="text-base font-medium text-text">{preset.name}</div>
+            <div className="line-clamp-2 text-sm leading-tight text-text-subtle">
               {preset.description}
             </div>
           </div>
@@ -99,16 +99,22 @@ export function PresetCurrentCard() {
                           setOpen(false);
                         }}
                         className={
-                          "rounded border px-2.5 py-2 text-left transition " +
+                          "group relative overflow-hidden rounded border px-2.5 py-2 text-left transition " +
                           (active
                             ? "border-accent/60 bg-accent/15"
                             : "border-border bg-overlay-1 hover:border-border-strong hover:bg-overlay-2")
                         }
                       >
-                        <div className="truncate text-xs font-medium text-text">
+                        <img
+                          src={`${import.meta.env.BASE_URL}thumbnails/${p.id}.jpg`}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                          draggable={false}
+                        />
+                        <div className="relative z-10 truncate text-sm font-medium text-text transition-colors duration-150 group-hover:text-white group-hover:[text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
                           {p.name}
                         </div>
-                        <div className="line-clamp-2 text-xs leading-tight text-text-subtle">
+                        <div className="relative z-10 line-clamp-2 text-xs leading-tight text-text-subtle transition-opacity duration-150 group-hover:opacity-0">
                           {p.description}
                         </div>
                       </button>

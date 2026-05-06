@@ -1,8 +1,5 @@
 import type { Preset } from "./types";
-import { converter, parse } from "culori";
-
-const toOklch = converter("oklch");
-const toRgb = converter("rgb");
+import { hexToRgbTriple } from "../color/palette";
 
 // "Papercut" stacked layers — flat solid colors, crisp anti-aliased edges, no
 // gradients/blur inside the shapes. Each layer fills everything below a
@@ -102,92 +99,49 @@ void main() {
 }
 `;
 
-interface Oklch {
-  l: number;
-  c: number;
-  h: number;
-}
-
-function clampOk(o: Oklch): Oklch {
-  return { l: Math.max(0, Math.min(1, o.l)), c: Math.max(0, Math.min(0.32, o.c)), h: o.h };
-}
-
-// Build N flat layer colors. Layer 0 is the deepest shade (paints the entire
-// canvas). Subsequent layers progressively lighter (or darker, depending on
-// direction param). For the canonical "papercut" look, hue spread is 0 and
-// lightness spread is wide — so all layers are different shades of one color.
-function buildLayerColors(
-  primaryHex: string,
-  count: number,
-  hueSpread: number,
-  lightnessRange: number,
-  direction: number
-): Float32Array {
-  const accent = (toOklch(parse(primaryHex)) as unknown as Oklch | undefined) ?? { l: 0.62, c: 0.18, h: 250 };
-  const out = new Float32Array(8 * 3);
-  const hueDeg = hueSpread * 220;
-  for (let i = 0; i < count; i++) {
-    const t = count > 1 ? i / (count - 1) : 0; // 0 = back, 1 = front
-    // Direction: 0 = back is darkest / front is lightest, 1 = reversed.
-    const lT = direction > 0.5 ? 1 - t : t;
-    const lOffset = (lT - 0.5) * lightnessRange;
-    const l = clampOk({ l: (accent.l ?? 0.55) + lOffset, c: 0, h: 0 }).l;
-    // Hue spread (when used) fans symmetrically around accent hue.
-    const hOffset = count > 1 ? (i / (count - 1) - 0.5) * hueDeg : 0;
-    const h = ((accent.h ?? 0) + hOffset + 720) % 360;
-    const c = Math.min(0.32, (accent.c ?? 0.18) * 1.0);
-    const rgb = toRgb({ mode: "oklch", l, c, h });
-    out[i * 3] = rgb?.r ?? 0;
-    out[i * 3 + 1] = rgb?.g ?? 0;
-    out[i * 3 + 2] = rgb?.b ?? 0;
-  }
-  return out;
-}
-
 export const layers: Preset = {
   kind: "shader",
   id: "layers",
   name: "Layers",
   description: "Papercut layered shapes — flat solid colors, crisp curved edges.",
   fragmentShader: fragment,
+  colorSlots: [
+    { kind: "colorArray", key: "colors", label: "Layer colors", minCount: 2, maxCount: 8 },
+  ],
   schema: [
-    { kind: "int", key: "u_layer_count", label: "Layers", min: 3, max: 8, default: 5 },
-    { kind: "range", key: "u_lightness_range", label: "Shade range", min: 0.1, max: 0.7, step: 0.01, default: 0.5 },
-    { kind: "range", key: "u_hue_spread", label: "Hue spread", min: 0, max: 1, step: 0.01, default: 0.0 },
-    { kind: "range", key: "u_direction", label: "Light → dark direction", min: 0, max: 1, step: 1, default: 0 },
-    { kind: "range", key: "u_amp", label: "Wave amp", min: 0.02, max: 0.35, step: 0.01, default: 0.16 },
-    { kind: "range", key: "u_tilt", label: "Tilt", min: 0, max: 0.6, step: 0.02, default: 0.28 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.015 },
-    { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.0 },
-    { kind: "seed", key: "u_seed", label: "Seed", default: 0.81 },
+    { kind: "range", key: "u_amp",      label: "Wave amp", min: 0.02, max: 0.35, step: 0.01, default: 0.16 },
+    { kind: "range", key: "u_tilt",     label: "Tilt",     min: 0,    max: 0.6,  step: 0.02, default: 0.28 },
+    { kind: "range", key: "u_speed",    label: "Speed",    min: 0,    max: 2.5,  step: 0.1,  default: 1.0 },
+    { kind: "range", key: "u_grain",    label: "Grain",    min: 0,    max: 0.06, step: 0.005, default: 0.015 },
+    { kind: "range", key: "u_vignette", label: "Vignette", min: 0,    max: 0.6,  step: 0.02, default: 0.0 },
+    { kind: "seed",  key: "u_seed",     label: "Seed",     default: 0.81 },
   ],
   defaults: {
-    u_layer_count: 5,
-    u_lightness_range: 0.5,
-    u_hue_spread: 0.0,
-    u_direction: 0,
     u_amp: 0.16,
     u_tilt: 0.28,
     u_speed: 1.0,
     u_grain: 0.015,
     u_vignette: 0.0,
     u_seed: 0.81,
+    colors: ["#1e1b4b", "#312e81", "#4338ca", "#6366f1", "#a5b4fc"],
   },
-  uniforms: (params, palette) => ({
-    u_layer_count: params.u_layer_count,
-    u_amp: params.u_amp,
-    u_tilt: params.u_tilt,
-    u_speed: params.u_speed,
-    u_grain: params.u_grain,
-    u_vignette: params.u_vignette,
-    u_seed: params.u_seed,
-    u_layer_colors: buildLayerColors(
-      palette.primary,
-      Math.max(3, Math.min(8, Math.round(params.u_layer_count))),
-      params.u_hue_spread,
-      params.u_lightness_range,
-      params.u_direction
-    ),
-  }),
+  uniforms: (params) => {
+    const hexArr = Array.isArray(params.colors) ? (params.colors as string[]) : [];
+    const count = Math.max(2, Math.min(8, hexArr.length));
+    const layerColors = new Float32Array(8 * 3);
+    for (let i = 0; i < count; i++) {
+      const [r, g, b] = hexToRgbTriple(hexArr[i] ?? "#000000");
+      layerColors[i * 3] = r; layerColors[i * 3 + 1] = g; layerColors[i * 3 + 2] = b;
+    }
+    return {
+      u_amp:          params.u_amp,
+      u_tilt:         params.u_tilt,
+      u_speed:        params.u_speed,
+      u_grain:        params.u_grain,
+      u_vignette:     params.u_vignette,
+      u_seed:         params.u_seed,
+      u_layer_count:  count,
+      u_layer_colors: layerColors,
+    };
+  },
 };

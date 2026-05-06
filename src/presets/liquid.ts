@@ -157,16 +157,13 @@ float softShadow(vec3 ro, vec3 rd, float k) {
 }
 
 // === ENVIRONMENT =============================================================
-// Procedural STUDIO environment with multiple directional light sources of
-// varying angular size. This replaces a single-gradient sky with something
-// approximating an HDRI environment map: multiple bright softboxes, a key
-// light, and a horizon-tinted base. THIS is what produces the bright varied
-// streaks across the chrome surface — what the reference actually shows.
+// Procedural studio environment approximating an HDRI map: multiple softboxes
+// at varying angular sizes, a key light, and a horizon-tinted base. Produces
+// the bright varied streaks across the chrome surface.
 vec3 envSky(vec3 r) {
   float h = clamp(u_horizon, 0.05, 1.0);
 
-  // Base gradient: dark warm floor to bright cool sky. Slightly blue-shifted
-  // sky reads as "studio" — neutral chrome reflects this as subtle blue tint.
+  // Base gradient: dark warm floor to bright cool sky.
   float skyT = clamp(r.y * 0.5 + 0.5, 0.0, 1.0);
   float ground = smoothstep(0.5 - h * 0.4, 0.5 + h * 0.4, skyT);
   vec3 floorCol = u_palette_shade0;

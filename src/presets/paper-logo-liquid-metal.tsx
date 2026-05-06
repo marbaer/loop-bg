@@ -1,6 +1,6 @@
 import { LiquidMetal, liquidMetalPresets } from "@paper-design/shaders-react";
 import type { PaperPreset } from "./types";
-import logoImage from "../../public/favicon.png";
+import logoImage from "../assets/placeholder-logo.png";
 
 const d = liquidMetalPresets[0].params;
 

@@ -1,4 +1,5 @@
 import type { Preset } from "./types";
+import { hexToRgbTriple } from "../color/palette";
 
 const fragment = /* glsl */ `
 uniform float u_t;
@@ -49,7 +50,7 @@ void main() {
   vec3 color = u_palette_bg;
 
   int n = int(u_bands);
-  // taste: distribute bands at golden-ratio positions, not evenly. Premium asymmetry.
+  // Bands at golden-ratio positions for asymmetry.
   float positions[5];
   positions[0] = 0.32;
   positions[1] = 0.62;
@@ -84,14 +85,18 @@ export const aurora: Preset = {
   name: "Aurora",
   description: "Horizontal color bands that drift and shimmer slowly across the canvas.",
   fragmentShader: fragment,
+  colorSlots: [
+    { kind: "color",      key: "colorBg", label: "Background" },
+    { kind: "colorArray", key: "colors",  label: "Aurora bands", minCount: 2, maxCount: 5 },
+  ],
   schema: [
-    { kind: "int", key: "u_bands", label: "Bands", min: 1, max: 5, default: 3 },
-    { kind: "range", key: "u_warp", label: "Warp", min: 0, max: 0.4, step: 0.01, default: 0.16 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
-    { kind: "range", key: "u_drift", label: "Drift", min: 0, max: 1, step: 0.05, default: 0.45 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.020 },
+    { kind: "int",   key: "u_bands",    label: "Bands",    min: 1, max: 5,   default: 3 },
+    { kind: "range", key: "u_warp",     label: "Warp",     min: 0, max: 0.4, step: 0.01, default: 0.16 },
+    { kind: "range", key: "u_speed",    label: "Speed",    min: 0, max: 2.5, step: 0.1,  default: 1.0 },
+    { kind: "range", key: "u_drift",    label: "Drift",    min: 0, max: 1,   step: 0.05, default: 0.45 },
+    { kind: "range", key: "u_grain",    label: "Grain",    min: 0, max: 0.06, step: 0.005, default: 0.020 },
     { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.22 },
-    { kind: "seed", key: "u_seed", label: "Seed", default: 0.42 },
+    { kind: "seed",  key: "u_seed",     label: "Seed",     default: 0.42 },
   ],
   defaults: {
     u_bands: 3,
@@ -101,14 +106,26 @@ export const aurora: Preset = {
     u_grain: 0.020,
     u_vignette: 0.22,
     u_seed: 0.42,
+    colorBg: "#0d0d1a",
+    colors: ["#6366f1", "#818cf8", "#4f46e5", "#a78bfa", "#c4b5fd"],
   },
-  uniforms: (params) => ({
-    u_bands: params.u_bands,
-    u_warp: params.u_warp,
-    u_speed: params.u_speed,
-    u_drift: params.u_drift,
-    u_grain: params.u_grain,
-    u_vignette: params.u_vignette,
-    u_seed: params.u_seed,
-  }),
+  uniforms: (params) => {
+    const cs = Array.isArray(params.colors) ? (params.colors as string[]) : [];
+    const bg = hexToRgbTriple(typeof params.colorBg === "string" ? params.colorBg : "#0d0d1a");
+    return {
+      u_bands:    params.u_bands,
+      u_warp:     params.u_warp,
+      u_speed:    params.u_speed,
+      u_drift:    params.u_drift,
+      u_grain:    params.u_grain,
+      u_vignette: params.u_vignette,
+      u_seed:     params.u_seed,
+      u_palette_bg:        bg,
+      u_palette_primary:   hexToRgbTriple(cs[0] ?? "#6366f1"),
+      u_palette_secondary: hexToRgbTriple(cs[1] ?? "#818cf8"),
+      u_palette_shade3:    hexToRgbTriple(cs[2] ?? "#4f46e5"),
+      u_palette_shade1:    hexToRgbTriple(cs[3] ?? "#a78bfa"),
+      u_palette_shade2:    hexToRgbTriple(cs[4] ?? "#c4b5fd"),
+    };
+  },
 };

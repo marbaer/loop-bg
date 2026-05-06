@@ -45,9 +45,9 @@ export function ColorPicker() {
       </div>
 
       <label className="block">
-        <div className="mb-1 flex items-center justify-between text-xs">
+        <div className="mb-1 flex items-center justify-between text-sm">
           <span className="text-text-muted">Background lightness</span>
-          <span className="font-mono text-text-subtle">{bgLightness.toFixed(2)}</span>
+          <span className="font-mono text-xs text-text-subtle">{bgLightness.toFixed(2)}</span>
         </div>
         <input
           type="range"
@@ -103,7 +103,7 @@ function SlotRow({
   return (
     <div className="flex items-center gap-2">
       <ColorSwatch value={color} onChange={onChange} size={24} ariaLabel={`${label} color`} />
-      <span className="flex-1 text-xs text-text-muted">{label}</span>
+      <span className="flex-1 text-sm text-text-muted">{label}</span>
       <span className="font-mono text-xs text-text-subtle">{color}</span>
       {overridden ? (
         <button

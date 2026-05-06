@@ -1,4 +1,5 @@
 import type { Preset } from "./types";
+import { hexToRgbTriple } from "../color/palette";
 
 const fragment = /* glsl */ `
 uniform float u_t;
@@ -23,10 +24,10 @@ uniform float u_grain;
 uniform float u_vignette;
 
 float blob_field(vec2 p) {
-  // Each blob orbits a slightly off-centered Lissajous path. All paths complete
-  // an INTEGER number of cycles over t ∈ [0,1] — that's the seamless-loop
-  // guarantee. Cycle counts vary per blob via fi so blobs don't move in lock-step.
-  // taste: centers offset on golden-ratio-ish positions so composition is asymmetric.
+  // Each blob orbits an off-centered Lissajous path. All paths complete an
+  // integer number of cycles over t ∈ [0,1] for seamless looping; cycle counts
+  // vary per blob via fi so blobs don't move in lock-step. Centers sit at
+  // golden-ratio-ish positions for asymmetric composition.
   float k = u_blur;
   float d = 1e9;
   int n = int(u_blob_count);
@@ -86,20 +87,24 @@ void main() {
 }
 `;
 
-export const gradientMesh: Preset = {
+export const softBlobs: Preset = {
   kind: "shader",
   id: "soft-blobs",
   name: "Soft Blobs",
   description: "Drifting color blobs that blur and merge into a soft, glowing field.",
   fragmentShader: fragment,
+  colorSlots: [
+    { kind: "color",      key: "colorBg", label: "Background" },
+    { kind: "colorArray", key: "colors",  label: "Gradient colors", minCount: 2, maxCount: 3 },
+  ],
   schema: [
-    { kind: "int", key: "u_blob_count", label: "Blobs", min: 2, max: 8, default: 5 },
-    { kind: "range", key: "u_blur", label: "Softness", min: 0.05, max: 0.6, step: 0.01, default: 0.28 },
-    { kind: "range", key: "u_speed", label: "Speed", min: 0, max: 2.5, step: 0.1, default: 1.0 },
-    { kind: "range", key: "u_contrast", label: "Contrast", min: 0.4, max: 2.0, step: 0.05, default: 0.9 },
-    { kind: "range", key: "u_grain", label: "Grain", min: 0, max: 0.06, step: 0.005, default: 0.020 },
-    { kind: "range", key: "u_vignette", label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.18 },
-    { kind: "seed", key: "u_seed", label: "Seed", default: 1.234 },
+    { kind: "int",   key: "u_blob_count", label: "Blobs",    min: 2, max: 8,   default: 5 },
+    { kind: "range", key: "u_blur",       label: "Softness", min: 0.05, max: 0.6, step: 0.01, default: 0.28 },
+    { kind: "range", key: "u_speed",      label: "Speed",    min: 0, max: 2.5, step: 0.1, default: 1.0 },
+    { kind: "range", key: "u_contrast",   label: "Contrast", min: 0.4, max: 2.0, step: 0.05, default: 0.9 },
+    { kind: "range", key: "u_grain",      label: "Grain",    min: 0, max: 0.06, step: 0.005, default: 0.020 },
+    { kind: "range", key: "u_vignette",   label: "Vignette", min: 0, max: 0.6, step: 0.02, default: 0.18 },
+    { kind: "seed",  key: "u_seed",       label: "Seed",     default: 1.234 },
   ],
   defaults: {
     u_blob_count: 5,
@@ -109,14 +114,25 @@ export const gradientMesh: Preset = {
     u_grain: 0.020,
     u_vignette: 0.18,
     u_seed: 1.234,
+    colorBg: "#0d0d1a",
+    colors: ["#4338ca", "#6366f1", "#a78bfa"],
   },
-  uniforms: (params) => ({
-    u_blob_count: params.u_blob_count,
-    u_blur: params.u_blur,
-    u_speed: params.u_speed,
-    u_contrast: params.u_contrast,
-    u_grain: params.u_grain,
-    u_vignette: params.u_vignette,
-    u_seed: params.u_seed,
-  }),
+  uniforms: (params) => {
+    const cs = Array.isArray(params.colors) ? (params.colors as string[]) : [];
+    const bg = hexToRgbTriple(typeof params.colorBg === "string" ? params.colorBg : "#0d0d1a");
+    return {
+      u_blob_count: params.u_blob_count,
+      u_blur:       params.u_blur,
+      u_speed:      params.u_speed,
+      u_contrast:   params.u_contrast,
+      u_grain:      params.u_grain,
+      u_vignette:   params.u_vignette,
+      u_seed:       params.u_seed,
+      u_palette_bg:      bg,
+      u_palette_shade0:  bg,
+      u_palette_shade1:  hexToRgbTriple(cs[0] ?? "#4338ca"),
+      u_palette_primary: hexToRgbTriple(cs[1] ?? "#6366f1"),
+      u_palette_shade3:  hexToRgbTriple(cs[2] ?? "#a78bfa"),
+    };
+  },
 };

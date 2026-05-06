@@ -25,12 +25,15 @@ export interface PresetBase {
   defaults: ParamValues;
 }
 
-/** Single-pass fragment-shader preset rendered through the legacy WebGL2 pipeline. */
+/** Single-pass fragment-shader preset rendered through the WebGL2 pipeline. */
 export interface ShaderPreset extends PresetBase {
   kind: "shader";
   fragmentShader: string;
   /** Map (params, palette) -> a flat record of GLSL uniform values. */
   uniforms: (params: ParamValues, palette: Palette) => UniformValues;
+  /** When defined, ShaderColorControls replaces the global ColorPicker —
+   *  colors are stored directly in paramsByPreset rather than derived from palette. */
+  colorSlots?: ColorSlot[];
 }
 
 /** React Three Fiber scene preset. The Scene component receives params, palette

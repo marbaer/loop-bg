@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
+import { useStore } from "../state/store";
+import { buildPalette } from "../color/palette";
 
 interface Props {
   value: string;
@@ -44,6 +46,22 @@ export function ColorSwatch({ value, onChange, size = 32, ariaLabel }: Props) {
   );
 }
 
+function useSwatchColors(): string[] {
+  const brandKits = useStore((s) => s.brandKits);
+  const lastAppliedKitId = useStore((s) => s.lastAppliedKitId);
+  const accentHex = useStore((s) => s.accentHex);
+  const paletteMode = useStore((s) => s.paletteMode);
+  const bgLightness = useStore((s) => s.bgLightness);
+  const paletteOverrides = useStore((s) => s.paletteOverrides);
+
+  const lastKit = brandKits.find((k) => k.id === lastAppliedKitId);
+  if (lastKit) return lastKit.colors;
+
+  // No palette applied yet: fall back to the global derived palette shades
+  const pal = buildPalette(accentHex, paletteMode, { bgLightness, overrides: paletteOverrides });
+  return [pal.bg, pal.primary, pal.secondary, ...pal.shades];
+}
+
 function ColorPopover({
   value,
   onChange,
@@ -56,6 +74,8 @@ function ColorPopover({
   const [hexDraft, setHexDraft] = useState(value);
   const [mode, setMode] = useState<"rgb" | "hsl">("rgb");
   useEffect(() => setHexDraft(value), [value]);
+
+  const swatchColors = useSwatchColors();
 
   const setRgbChannel = (key: "r" | "g" | "b", n: number) => {
     const clamped = Math.max(0, Math.min(255, Math.round(Number.isFinite(n) ? n : 0)));
@@ -94,6 +114,25 @@ function ColorPopover({
           className="h-8 flex-1 rounded border border-border bg-overlay-1 px-3 font-mono text-sm text-text focus:border-border-strong focus:outline-none"
         />
       </div>
+      {swatchColors.length > 0 && (
+        <div className="flex gap-1">
+          {swatchColors.slice(0, 10).map((c, i) => (
+            <button
+              key={i}
+              type="button"
+              title={c}
+              onClick={() => onChange(c)}
+              style={{ backgroundColor: c }}
+              className={
+                "h-5 w-5 flex-shrink-0 rounded border transition hover:scale-110 " +
+                (c.toLowerCase() === value.toLowerCase()
+                  ? "border-accent ring-1 ring-accent/50"
+                  : "border-black/10 dark:border-white/10")
+              }
+            />
+          ))}
+        </div>
+      )}
       <div className="space-y-1.5">
         <div className="flex overflow-hidden rounded border border-border text-xs font-medium">
           <button
