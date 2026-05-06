@@ -10,6 +10,7 @@ export interface ExportArgs {
   params: ParamValues;
   palette: Palette;
   config: ExportConfig;
+  signal?: AbortSignal;
   onProgress?: (frame: number, total: number) => void;
 }
 
@@ -28,7 +29,8 @@ export interface ExportResult {
  * so frame 0 and frame N are identical — guaranteeing a seamless loop.
  */
 export async function runExport(args: ExportArgs): Promise<ExportResult> {
-  const { preset, params, palette, config, onProgress } = args;
+  const { preset, params, palette, config, signal, onProgress } = args;
+  signal?.throwIfAborted();
   if (preset.kind !== "shader") {
     throw new Error(
       `Export not yet supported for "${preset.kind}" presets. The R3F export ` +
@@ -70,25 +72,29 @@ export async function runExport(args: ExportArgs): Promise<ExportResult> {
     ? ((params as Record<string, unknown>).u_speed as number)
     : 1;
   const cycles = rawSpeed === 0 ? 0 : Math.max(1, Math.round(rawSpeed));
-  for (let i = 0; i < totalFrames; i++) {
-    const t = i / totalFrames; // critical: not i/(totalFrames-1)
-    const tScaled = cycles === 0 ? 0 : (t * cycles) % 1;
-    renderer.render(preset, params, palette, tScaled, width, height);
-    // Read GPU work into a VideoFrame via the canvas itself.
-    await enc.encodeFrame(offscreen, i);
+  try {
+    for (let i = 0; i < totalFrames; i++) {
+      signal?.throwIfAborted();
+      const t = i / totalFrames; // critical: not i/(totalFrames-1)
+      const tScaled = cycles === 0 ? 0 : (t * cycles) % 1;
+      renderer.render(preset, params, palette, tScaled, width, height);
+      // Read GPU work into a VideoFrame via the canvas itself.
+      await enc.encodeFrame(offscreen, i);
+    }
+
+    const blob = await enc.finish();
+
+    const ext = config.format === "mp4" ? "mp4" : "webm";
+    const stamp = new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")
+      .slice(0, 19);
+    const filename = `loop-bg-${preset.id}-${width}x${height}-${stamp}.${ext}`;
+
+    return { blob, encoder: "webcodecs", filename };
+  } finally {
+    renderer.dispose();
   }
-
-  const blob = await enc.finish();
-  renderer.dispose();
-
-  const ext = config.format === "mp4" ? "mp4" : "webm";
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-")
-    .slice(0, 19);
-  const filename = `loop-bg-${preset.id}-${width}x${height}-${stamp}.${ext}`;
-
-  return { blob, encoder: "webcodecs", filename };
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

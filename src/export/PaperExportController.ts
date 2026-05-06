@@ -10,6 +10,7 @@ export interface PaperExportArgs {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   componentProps: Record<string, any>;
   config: ExportConfig;
+  signal?: AbortSignal;
   onProgress?: (frame: number, total: number) => void;
 }
 
@@ -38,7 +39,8 @@ export interface PaperExportResult {
  *  - "ping-pong": render the first half forward, then re-render the same
  *    frame indices in reverse for the second half. Seamless by construction. */
 export async function runPaperExport(args: PaperExportArgs): Promise<PaperExportResult> {
-  const { preset, componentProps, config, onProgress } = args;
+  const { preset, componentProps, config, signal, onProgress } = args;
+  signal?.throwIfAborted();
   const caps = await detectCapabilities();
   if (!caps.webCodecs || (config.format === "mp4" ? !caps.h264 : !caps.vp9)) {
     throw new Error(`WebCodecs ${config.format} encoding not supported in this browser.`);
@@ -103,6 +105,7 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
       const halfFrames = Math.ceil(totalFrames / 2);
       // Forward: 0 .. halfFrames-1
       for (let i = 0; i < halfFrames; i++) {
+        signal?.throwIfAborted();
         mount.setFrame(frameToMs(i));
         await enc.encodeFrame(canvas, i);
       }
@@ -110,12 +113,14 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
       // setFrame is pure (same input → same output), so no need to buffer.
       const reverseFramesNeeded = totalFrames - halfFrames;
       for (let r = 0; r < reverseFramesNeeded; r++) {
+        signal?.throwIfAborted();
         const sourceIdx = Math.max(0, halfFrames - 2 - r);
         mount.setFrame(frameToMs(sourceIdx));
         await enc.encodeFrame(canvas, halfFrames + r);
       }
     } else {
       for (let i = 0; i < totalFrames; i++) {
+        signal?.throwIfAborted();
         mount.setFrame(frameToMs(i));
         await enc.encodeFrame(canvas, i);
       }

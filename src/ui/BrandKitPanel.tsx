@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStore, BrandKitQuotaError } from "../state/store";
 import type { BrandKit } from "../state/brandKits";
+import { Button } from "./Button";
 
 export function BrandKitPanel() {
   const kits = useStore((s) => s.brandKits);
@@ -34,12 +35,9 @@ export function BrandKitPanel() {
 
   if (kits.length === 0 && !saving) {
     return (
-      <button
-        onClick={() => setSaving(true)}
-        className="text-xs text-text-muted hover:text-text transition"
-      >
+      <Button size="sm" variant="dashed" onClick={() => setSaving(true)}>
         + Save current colors as palette
-      </button>
+      </Button>
     );
   }
 
@@ -72,20 +70,25 @@ export function BrandKitPanel() {
               {kit.name}
             </span>
           )}
-          <button
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => applyBrandKit(kit.id)}
-            className="text-xs text-text-muted hover:text-text transition flex-shrink-0"
+            className="flex-shrink-0"
             title="Apply palette to current preset"
           >
             Apply
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => deleteBrandKit(kit.id)}
-            className="text-xs text-text-muted hover:text-danger transition flex-shrink-0"
+            className="flex-shrink-0 hover:!border-danger/60 hover:!text-danger"
             title="Delete palette"
+            aria-label="Delete palette"
           >
             ✕
-          </button>
+          </Button>
         </div>
       ))}
 
@@ -104,27 +107,28 @@ export function BrandKitPanel() {
           />
           {error && <div className="text-xs text-danger">{error}</div>}
           <div className="flex gap-1.5">
-            <button
+            <Button
+              size="sm"
+              variant="primary"
               onClick={handleSave}
-              className="flex-1 rounded bg-accent px-2 py-1 text-xs font-medium text-accent-text hover:opacity-90 transition"
+              className="flex-1"
             >
               Save
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => { setSaving(false); setDraftName(""); setError(null); }}
-              className="flex-1 rounded border border-border px-2 py-1 text-xs text-text-muted hover:text-text transition"
+              className="flex-1"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setSaving(true)}
-          className="text-xs text-text-muted hover:text-text transition"
-        >
+        <Button size="sm" variant="dashed" onClick={() => setSaving(true)}>
           + Save current colors as palette
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -17,6 +17,7 @@ import { presets } from "../presets";
 import { AspectRatioSwitcher } from "./AspectRatioSwitcher";
 import { BrandKitPanel } from "./BrandKitPanel";
 import { aspectRatioNumber } from "../state/store";
+import { Button } from "./Button";
 
 export function App() {
   const [exportOpen, setExportOpen] = useState(false);
@@ -67,15 +68,18 @@ export function App() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            size="lg"
+            variant="primary"
             onClick={() => setExportOpen(true)}
             disabled={preset.kind === "r3f"}
             title={preset.kind === "r3f" ? "Export not wired up for R3F presets" : undefined}
-            className="rounded bg-accent px-5 py-2.5 text-base font-medium text-accent-text transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Export video
-          </button>
-          <button
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
             onClick={() => {
               const snap = selectShareSnapshot(useStore.getState());
               navigator.clipboard.writeText(getShareUrl(snap)).then(() => {
@@ -84,13 +88,23 @@ export function App() {
               });
             }}
             title="Copy share link"
-            className="rounded border border-border-strong bg-overlay-2 px-4 py-2.5 text-base font-medium text-text transition hover:bg-overlay-3"
+            className={
+              "relative w-[7.5rem] overflow-hidden active:scale-[0.97] " +
+              (copied
+                ? "!border-green-500/30 !bg-green-500/15 !text-green-700 dark:!text-green-400"
+                : "")
+            }
           >
-            {copied ? "Copied!" : "Share"}
-          </button>
+            <span className={"block transition-all duration-200 " + (copied ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100")}>
+              Copy link
+            </span>
+            <span className={"absolute inset-0 flex items-center justify-center transition-all duration-200 " + (copied ? "translate-y-0 opacity-100" : "translate-y-full opacity-0")}>
+              Copied
+            </span>
+          </Button>
         </div>
       </main>
-      <aside className="w-full border-t border-border bg-surface-raised p-4 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-5">
+      <aside className="w-full border-t border-border bg-surface-raised p-4 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-scroll lg:border-l lg:border-t-0 lg:p-5">
         <header className="mb-5 flex items-center justify-between">
           <div className="text-headline font-semibold text-text">Loop BG</div>
           <IconButton

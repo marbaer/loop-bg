@@ -2,6 +2,7 @@ import { useStore } from "../state/store";
 import { buildPalette, type PaletteSlot } from "../color/palette";
 import { useMemo } from "react";
 import { ColorSwatch } from "./ColorSwatch";
+import { Button } from "./Button";
 
 export function ColorPicker() {
   const accent = useStore((s) => s.accentHex);
@@ -74,12 +75,14 @@ export function ColorPicker() {
       </div>
 
       {hasOverrides && (
-        <button
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={resetPalette}
-          className="w-full rounded-sm border border-border bg-overlay-1 px-2 py-1 text-xs uppercase tracking-wider text-text-muted hover:border-border-strong hover:text-text"
+          className="w-full"
         >
           Reset palette to auto
-        </button>
+        </Button>
       )}
     </div>
   );

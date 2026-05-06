@@ -3,6 +3,7 @@ import { useStore, useActiveParams } from "../state/store";
 import type { ColorSlot } from "../presets/types";
 import { shadesFromColor } from "../color/shades";
 import { ColorSwatch } from "./ColorSwatch";
+import { Button } from "./Button";
 
 /** Per-shader color controls. Replaces the global brand-palette ColorPicker
  *  for paper-design presets. Each slot maps to one shader color prop (or one
@@ -106,7 +107,7 @@ function ColorRow({
         type="text"
         value={color}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 flex-1 rounded border border-border bg-overlay-1 px-3 font-mono text-sm text-text focus:border-border-strong focus:outline-none"
+        className="h-8 min-w-0 flex-1 rounded border border-border bg-overlay-1 px-3 font-mono text-sm text-text focus:border-border-strong focus:outline-none"
       />
       {onRemove && (
         <button
@@ -181,28 +182,32 @@ function ArrayControl({
         <div className="text-xs uppercase tracking-wider text-text-subtle">
           {label} <span className="text-text-subtle/40">({colors.length}/{max})</span>
         </div>
-        <button
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={() => setShadesPickerOpen((o) => !o)}
-          className="rounded border border-border bg-overlay-1 px-2 py-0.5 text-xs uppercase tracking-wider text-text-muted hover:border-border-strong hover:text-text"
           title="Generate shades from one color"
         >
           Shades…
-        </button>
+        </Button>
       </div>
       {shadesPickerOpen && (
         <div className="rounded border border-border bg-overlay-1 p-2 space-y-2">
           <div className="text-sm text-text-muted">Pick a source color, fill {colors.length} shades:</div>
           <div className="flex items-center gap-2">
-            <ColorRow color={shadesSource} onChange={setShadesSource} />
-            <button
+            <div className="flex-1 min-w-0">
+              <ColorRow color={shadesSource} onChange={setShadesSource} />
+            </div>
+            <Button
+              size="sm"
+              variant="primary"
               onClick={() => {
                 onChange(shadesFromColor(shadesSource, Math.max(min, colors.length || 4)));
                 setShadesPickerOpen(false);
               }}
-              className="rounded bg-accent px-2 py-1 text-xs font-medium uppercase tracking-wider text-accent-text hover:opacity-90"
             >
               Fill
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -277,12 +282,13 @@ function ArrayControl({
         })}
       </div>
       {colors.length < max && (
-        <button
+        <Button
+          size="sm"
+          variant="dashed"
           onClick={() => onChange([...colors, colors[colors.length - 1] ?? "#888888"])}
-          className="w-full rounded border border-dashed border-border bg-overlay-1 px-2 py-1.5 text-xs uppercase tracking-wider text-text-subtle hover:border-border-strong hover:text-text"
         >
           + Add color
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useStore } from "../state/store";
+import { Button } from "./Button";
 
 export function ImageUploader() {
   const uploadedImage = useStore((s) => s.uploadedImage);
@@ -57,12 +58,14 @@ export function ImageUploader() {
         )}
       </div>
       {uploadedImage && (
-        <button
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={() => setUploadedImage(null)}
-          className="w-full rounded-sm border border-border bg-overlay-1 px-2 py-1 text-xs uppercase tracking-wider text-text-muted hover:border-border-strong hover:text-text"
+          className="w-full"
         >
           Remove image
-        </button>
+        </Button>
       )}
     </div>
   );

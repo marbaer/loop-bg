@@ -21,7 +21,10 @@ const THEME_STORAGE_KEY = "loop-bg-theme";
 function readPersistedTheme(): ChromeTheme {
   if (typeof localStorage === "undefined") return "dark";
   const v = localStorage.getItem(THEME_STORAGE_KEY);
-  return v === "light" ? "light" : "dark";
+  if (v === "light" || v === "dark") return v;
+  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 export interface ExportConfig {

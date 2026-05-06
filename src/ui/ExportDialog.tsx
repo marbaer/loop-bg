@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore, useActivePreset, useActiveParams, ASPECT_RATIO_RESOLUTIONS } from "../state/store";
 import { buildPalette } from "../color/palette";
 import { runExport, downloadBlob } from "../export/ExportController";
 import { runPaperExport } from "../export/PaperExportController";
 import { detectCapabilities, type ExportCapabilities } from "../export/capabilities";
+import { Button } from "./Button";
 
 export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const config = useStore((s) => s.exportConfig);
@@ -24,6 +25,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [caps, setCaps] = useState<ExportCapabilities | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -46,6 +48,8 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
   async function onExport() {
     setBusy(true);
     setError(null);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const palette = buildPalette(accentHex, mode, { bgLightness, overrides });
       if (preset.kind === "paper") {
@@ -58,6 +62,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           preset,
           componentProps,
           config,
+          signal: controller.signal,
           onProgress: (frame, total) => setProgress(frame / total),
         });
         downloadBlob(result.blob, result.filename);
@@ -69,13 +74,19 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
         params,
         palette,
         config,
+        signal: controller.signal,
         onProgress: (frame, total) => setProgress(frame / total),
       });
       downloadBlob(result.blob, result.filename);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (e instanceof DOMException && e.name === "AbortError") {
+        onClose();
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
+      abortRef.current = null;
       setBusy(false);
       setProgress(0);
     }
@@ -86,7 +97,14 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover p-5 text-text shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-headline font-semibold text-text">Export video</h2>
-          <button onClick={onClose} disabled={busy} className="text-text-subtle hover:text-text disabled:opacity-30" aria-label="Close">
+          <button
+            onClick={() => {
+              if (busy) abortRef.current?.abort();
+              else onClose();
+            }}
+            className="text-text-subtle hover:text-text"
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
@@ -207,20 +225,24 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
         )}
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            disabled={busy}
-            className="rounded border border-border px-3 py-1.5 text-sm text-text-muted hover:border-border-strong hover:text-text disabled:opacity-50"
+          <Button
+            size="md"
+            variant="secondary"
+            onClick={() => {
+              if (busy) abortRef.current?.abort();
+              else onClose();
+            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            size="md"
+            variant="primary"
             onClick={onExport}
             disabled={busy}
-            className="rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-text hover:opacity-90 disabled:opacity-50"
           >
             {busy ? "Encoding…" : "Export"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
