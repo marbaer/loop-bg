@@ -2,14 +2,6 @@ import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4Target } from "mp4-muxer";
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmTarget } from "webm-muxer";
 import { bitrateFor } from "./capabilities";
 
-declare global {
-  // VideoEncoder/VideoFrame are part of WebCodecs; declare loosely to avoid lib mismatch.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const VideoEncoder: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const VideoFrame: any;
-}
-
 export interface EncodeOptions {
   width: number;
   height: number;
@@ -26,6 +18,14 @@ export interface EncoderHandle {
   finish: () => Promise<Blob>;
 }
 
+// Encoder runs on the main thread. A worker-based encoder was tested and
+// reverted: transferring `VideoFrame(canvas)` to a worker on iOS Safari
+// produced a deferred reference rather than a true snapshot, so the worker
+// encoded whatever was in the canvas at consume time (i.e. the last frame
+// drawn before drain), not the frame that was supposed to be captured. The
+// resulting MP4 looked nothing like the preview. encoder.encode() is async
+// dispatch into the OS encoder anyway, so the main-thread cost is small once
+// the capture step (Phase 1: fenceSync + zero-copy VideoFrame) is fast.
 export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<EncoderHandle> {
   const { width, height, fps, durationSeconds, format, quality } = opts;
   if (width % 2 !== 0 || height % 2 !== 0) {
@@ -78,7 +78,7 @@ export async function createWebCodecsEncoder(opts: EncodeOptions): Promise<Encod
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const encoder = new (globalThis as any).VideoEncoder({
-    output: (chunk: any, meta: any) => {
+    output: (chunk: unknown, meta: unknown) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (muxer as any).addVideoChunk(chunk, meta);
     },

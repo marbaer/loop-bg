@@ -64,14 +64,21 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
   let root: Root | null = null;
   try {
     root = createRoot(host);
+    // preserveDrawingBuffer:true is export-only — preview keeps the default
+    // (false) so the visible canvas avoids the per-present copy. Required here
+    // for the fenceSync + zero-copy VideoFrame(canvas) capture path: without
+    // it, the backbuffer contents are discarded between draw and snapshot
+    // even after a settled fence, producing blank frames on iOS.
     root.render(
       createElement(preset.Component, {
         ...componentProps,
+        webGlContextAttributes: { preserveDrawingBuffer: true },
         style: { width: `${width}px`, height: `${height}px`, display: "block" },
       })
     );
 
     const canvas = await waitForCanvas(host, width, height, 3000);
+    const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
 
     // ShaderMount attaches itself to the parent <div> paper-design wraps
     // around the canvas. Grab it so we can drive frames synchronously.
@@ -102,23 +109,49 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
     const frameToMs = (frameIdx: number) => (frameIdx * 1000 * speed) / config.fps;
 
     // iOS Safari (Metal-backed WebGL) doesn't drain the GPU command queue
-    // before `new VideoFrame(canvas)` snapshots it, so the encoder captures
-    // partial / stale frames and the export flickers (both MP4 and WebM).
-    // createImageBitmap synchronizes with the GPU before producing the bitmap,
-    // so the snapshot reflects a fully rendered frame. Desktop Chrome hides
-    // the bug with internal buffer copies, and `gl.finish()` is a no-op on
-    // iOS's Metal driver — neither is a safe substitute. WebGL2 fenceSync +
-    // clientWaitSync waits correctly but `new VideoFrame(canvas)` on a WebGL
-    // canvas with preserveDrawingBuffer:false (paper-design's default)
-    // produces blank frames after the fence — so we still need the
-    // canvas → ImageBitmap → VideoFrame path. Do not remove this without
-    // testing on real iOS Safari.
-    const captureAndEncode = async (outIdx: number) => {
-      const bitmap = await createImageBitmap(canvas);
+    // before `new VideoFrame(canvas)` snapshots it, so naive capture flickers.
+    // Path history:
+    //   - `gl.finish()`: silent no-op on iOS Metal driver, doesn't sync.
+    //   - `createImageBitmap(canvas)`: correct but allocates and busy-waits
+    //     on the GPU each frame; ~217ms/frame at 1080p, the export bottleneck.
+    //   - `fenceSync` + `VideoFrame(canvas)` with paper-design's default
+    //     preserveDrawingBuffer:false: fence settles, but the backbuffer is
+    //     discarded between draw and snapshot → blank frames.
+    // Working combination: force preserveDrawingBuffer:true (passed via the
+    // `webGlContextAttributes` prop above), then wait on a real WebGL2 fence
+    // with non-blocking polling, then construct VideoFrame(canvas) directly.
+    // No allocation, no busy-wait; the backbuffer survives the fence because
+    // PDB:true tells the driver not to discard.
+    // If fenceSync isn't available, fall back to the createImageBitmap path.
+    const useFence = !!gl && caps.webgl2FenceSync;
+    const waitForGpu = async (): Promise<void> => {
+      if (!useFence) return;
+      const sync = gl!.fenceSync(gl!.SYNC_GPU_COMMANDS_COMPLETE, 0);
+      if (!sync) return;
+      gl!.flush();
       try {
-        await enc.encodeFrame(bitmap, outIdx);
+        for (let i = 0; i < 200; i++) {
+          const r = gl!.clientWaitSync(sync, 0, 0);
+          if (r === gl!.ALREADY_SIGNALED || r === gl!.CONDITION_SATISFIED) return;
+          if (r === gl!.WAIT_FAILED) throw new Error("WebGL fence wait failed");
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+        throw new Error("WebGL fence never signaled within 200 polls");
       } finally {
-        bitmap.close();
+        gl!.deleteSync(sync);
+      }
+    };
+    const captureAndEncode = async (outIdx: number) => {
+      if (useFence) {
+        await waitForGpu();
+        await enc.encodeFrame(canvas, outIdx);
+      } else {
+        const bitmap = await createImageBitmap(canvas);
+        try {
+          await enc.encodeFrame(bitmap, outIdx);
+        } finally {
+          bitmap.close();
+        }
       }
     };
 

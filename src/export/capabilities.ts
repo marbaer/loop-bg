@@ -2,11 +2,15 @@ export interface ExportCapabilities {
   webCodecs: boolean;
   h264: boolean;
   vp9: boolean;
+  /** WebGL2 fenceSync — used by the paper export to wait on the GPU without
+   *  the heavy createImageBitmap allocation on each frame. iOS 15+ has it. */
+  webgl2FenceSync: boolean;
 }
 
 export async function detectCapabilities(): Promise<ExportCapabilities> {
   const hasWC = typeof (globalThis as any).VideoEncoder !== "undefined";
-  if (!hasWC) return { webCodecs: false, h264: false, vp9: false };
+  const webgl2FenceSync = probeFenceSync();
+  if (!hasWC) return { webCodecs: false, h264: false, vp9: false, webgl2FenceSync };
   let h264 = false;
   let vp9 = false;
   try {
@@ -30,7 +34,17 @@ export async function detectCapabilities(): Promise<ExportCapabilities> {
     });
     vp9 = !!probeVp9?.supported;
   } catch {}
-  return { webCodecs: hasWC, h264, vp9 };
+  return { webCodecs: hasWC, h264, vp9, webgl2FenceSync };
+}
+
+function probeFenceSync(): boolean {
+  try {
+    const c = document.createElement("canvas");
+    const gl = c.getContext("webgl2") as WebGL2RenderingContext | null;
+    return !!gl && typeof gl.fenceSync === "function" && typeof gl.clientWaitSync === "function";
+  } catch {
+    return false;
+  }
 }
 
 export function bitrateFor(width: number, height: number, quality: "standard" | "high" | "max", fps: number = 30): number {
