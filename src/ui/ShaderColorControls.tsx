@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore, useActiveParams } from "../state/store";
 import type { ColorSlot } from "../presets/types";
 import { shadesFromColor } from "../color/shades";
@@ -68,6 +68,7 @@ function ColorRow({
   onChange,
   onRemove,
   dragHandleProps,
+  dragHandleRef,
   dragging,
   dropIndicator,
 }: {
@@ -75,6 +76,7 @@ function ColorRow({
   onChange: (hex: string) => void;
   onRemove?: () => void;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  dragHandleRef?: React.Ref<HTMLDivElement>;
   dragging?: boolean;
   dropIndicator?: "top" | "bottom" | null;
 }) {
@@ -93,9 +95,10 @@ function ColorRow({
           }
         />
       )}
-      {dragHandleProps && (
+      {(dragHandleProps || dragHandleRef) && (
         <div
           {...dragHandleProps}
+          ref={dragHandleRef}
           className="grid h-11 w-11 flex-shrink-0 cursor-grab touch-none place-items-center text-text-subtle hover:text-text active:cursor-grabbing lg:h-8 lg:w-5"
           title="Drag to reorder"
         >
@@ -155,11 +158,18 @@ function ArrayControl({
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const [overEdge, setOverEdge] = useState<"top" | "bottom" | null>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const handleRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dragStateRef = useRef<{ from: number; over: number | null; edge: "top" | "bottom" | null }>({
     from: -1,
     over: null,
     edge: null,
   });
+  // Stash latest values for the imperative touch listeners — `useEffect` would
+  // otherwise re-bind every render and we'd lose the gesture mid-drag.
+  const colorsRef = useRef(colors);
+  colorsRef.current = colors;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   function reorder(from: number, to: number) {
     if (from === to) return;
@@ -175,6 +185,84 @@ function ArrayControl({
     setOverIndex(null);
     setOverEdge(null);
   }
+
+  // iOS Safari: React's JSX onTouchStart is registered as a *passive* listener
+  // on React's root container (React 17+), so by the time we'd call
+  // preventDefault, iOS has already decided the gesture is a scroll/swipe and
+  // suppresses or delays event delivery. We bypass React's delegation and
+  // attach a non-passive native touchstart on each handle so preventDefault
+  // runs synchronously and locks the gesture to the handle. touchmove/end
+  // stay attached to the same handle — iOS dispatches the whole gesture to
+  // the element where touchstart fired.
+  useEffect(() => {
+    const cleanups: Array<() => void> = [];
+    handleRefs.current.forEach((handle, i) => {
+      if (!handle) return;
+
+      function hitTest(y: number): { over: number | null; edge: "top" | "bottom" | null } {
+        for (let j = 0; j < itemRefs.current.length; j++) {
+          const el = itemRefs.current[j];
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          if (y >= rect.top && y <= rect.bottom) {
+            return { over: j, edge: y - rect.top < rect.height / 2 ? "top" : "bottom" };
+          }
+        }
+        return { over: null, edge: null };
+      }
+
+      function onTouchStart(e: TouchEvent) {
+        e.preventDefault();
+        dragStateRef.current = { from: i, over: null, edge: null };
+        setDragIndex(i);
+      }
+
+      function onTouchMove(e: TouchEvent) {
+        if (e.touches.length === 0) return;
+        e.preventDefault();
+        const state = dragStateRef.current;
+        if (state.from < 0) return;
+        const y = e.touches[0].clientY;
+        const { over, edge } = hitTest(y);
+        if (over !== state.over || edge !== state.edge) {
+          dragStateRef.current = { from: state.from, over, edge };
+          setOverIndex(over);
+          setOverEdge(edge);
+        }
+      }
+
+      function onTouchEnd() {
+        const { from, over, edge } = dragStateRef.current;
+        if (from >= 0 && over !== null && edge !== null) {
+          let target = edge === "bottom" ? over + 1 : over;
+          if (target > from) target -= 1;
+          if (from !== target) {
+            const next = colorsRef.current.slice();
+            const [moved] = next.splice(from, 1);
+            next.splice(target, 0, moved);
+            onChangeRef.current(next);
+          }
+        }
+        resetDrag();
+      }
+
+      function onTouchCancel() {
+        resetDrag();
+      }
+
+      handle.addEventListener("touchstart", onTouchStart, { passive: false });
+      handle.addEventListener("touchmove", onTouchMove, { passive: false });
+      handle.addEventListener("touchend", onTouchEnd);
+      handle.addEventListener("touchcancel", onTouchCancel);
+      cleanups.push(() => {
+        handle.removeEventListener("touchstart", onTouchStart);
+        handle.removeEventListener("touchmove", onTouchMove);
+        handle.removeEventListener("touchend", onTouchEnd);
+        handle.removeEventListener("touchcancel", onTouchCancel);
+      });
+    });
+    return () => cleanups.forEach((fn) => fn());
+  }, [colors.length]);
 
   return (
     <div className="space-y-1.5">
@@ -241,6 +329,7 @@ function ArrayControl({
                     setDragIndex(i);
                   },
                   onPointerMove: (e) => {
+                    if (e.pointerType === "touch") return;
                     const state = dragStateRef.current;
                     if (state.from < 0) return;
                     const y = e.clientY;
@@ -262,7 +351,8 @@ function ArrayControl({
                       setOverEdge(foundEdge);
                     }
                   },
-                  onPointerUp: () => {
+                  onPointerUp: (e) => {
+                    if (e.pointerType === "touch") return;
                     const { from, over, edge } = dragStateRef.current;
                     if (from >= 0 && over !== null && edge !== null) {
                       let target = edge === "bottom" ? over + 1 : over;
@@ -271,64 +361,13 @@ function ArrayControl({
                     }
                     resetDrag();
                   },
-                  onPointerCancel: () => {
+                  onPointerCancel: (e) => {
+                    if (e.pointerType === "touch") return;
                     resetDrag();
                   },
-                  onTouchStart: () => {
-                    dragStateRef.current = { from: i, over: null, edge: null };
-                    setDragIndex(i);
-
-                    function cleanup() {
-                      document.removeEventListener("touchmove", handleMove);
-                      document.removeEventListener("touchend", handleEnd);
-                      document.removeEventListener("touchcancel", handleCancel);
-                    }
-
-                    function handleMove(ev: TouchEvent) {
-                      if (ev.touches.length === 0) return;
-                      ev.preventDefault();
-                      const y = ev.touches[0].clientY;
-                      const state = dragStateRef.current;
-                      if (state.from < 0) return;
-                      let foundOver: number | null = null;
-                      let foundEdge: "top" | "bottom" | null = null;
-                      for (let j = 0; j < itemRefs.current.length; j++) {
-                        const el = itemRefs.current[j];
-                        if (!el) continue;
-                        const rect = el.getBoundingClientRect();
-                        if (y >= rect.top && y <= rect.bottom) {
-                          foundOver = j;
-                          foundEdge = y - rect.top < rect.height / 2 ? "top" : "bottom";
-                          break;
-                        }
-                      }
-                      if (foundOver !== state.over || foundEdge !== state.edge) {
-                        dragStateRef.current = { from: state.from, over: foundOver, edge: foundEdge };
-                        setOverIndex(foundOver);
-                        setOverEdge(foundEdge);
-                      }
-                    }
-
-                    function handleEnd() {
-                      cleanup();
-                      const { from, over, edge } = dragStateRef.current;
-                      if (from >= 0 && over !== null && edge !== null) {
-                        let target = edge === "bottom" ? over + 1 : over;
-                        if (target > from) target -= 1;
-                        reorder(from, target);
-                      }
-                      resetDrag();
-                    }
-
-                    function handleCancel() {
-                      cleanup();
-                      resetDrag();
-                    }
-
-                    document.addEventListener("touchmove", handleMove, { passive: false });
-                    document.addEventListener("touchend", handleEnd);
-                    document.addEventListener("touchcancel", handleCancel);
-                  },
+                }}
+                dragHandleRef={(el) => {
+                  handleRefs.current[i] = el;
                 }}
                 dragging={dragIndex === i}
                 dropIndicator={isOver ? overEdge : null}
