@@ -52,7 +52,7 @@ export function BrandKitPanel() {
           {renamingId === kit.id ? (
             <input
               autoFocus
-              className="flex-1 min-w-0 bg-transparent text-xs text-text outline-none"
+              className="flex-1 min-w-0 bg-transparent text-sm text-text outline-none"
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               onBlur={() => handleRenameCommit(kit)}
@@ -103,7 +103,7 @@ export function BrandKitPanel() {
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") { setSaving(false); setDraftName(""); setError(null); }
             }}
-            className="w-full rounded border border-border bg-overlay-1 px-2.5 py-1.5 text-xs text-text placeholder-text-subtle outline-none focus:border-accent/60"
+            className="w-full rounded border border-border bg-overlay-1 px-2.5 py-1.5 text-sm text-text placeholder-text-subtle outline-none focus:border-accent/60"
           />
           {error && <div className="text-xs text-danger">{error}</div>}
           <div className="flex gap-1.5">
