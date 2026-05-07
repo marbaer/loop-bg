@@ -235,7 +235,6 @@ function ArrayControl({
                 }
                 dragHandleProps={{
                   onPointerDown: (e) => {
-                    e.preventDefault(); // cancel iOS scroll-candidate before capture locks in
                     e.currentTarget.setPointerCapture(e.pointerId);
                     dragStateRef.current = { from: i, over: null, edge: null };
                     setDragIndex(i);
