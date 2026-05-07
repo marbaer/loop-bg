@@ -101,16 +101,25 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
     // 10s of preview at speed=2.
     const frameToMs = (frameIdx: number) => (frameIdx * 1000 * speed) / config.fps;
 
-    // iOS Safari (Metal-backed WebGL2) doesn't drain the GPU command queue
-    // before `new VideoFrame(canvas)` snapshots it, causing partial/stale frame
-    // captures and visible flicker. gl.finish() is the native WebGL primitive
-    // for this: it synchronously blocks until all pending draws are complete,
-    // after which VideoFrame(canvas) captures a fully-settled frame with no
-    // extra copy. Cheaper than createImageBitmap (no async fence + allocation).
-    const gl = canvas.getContext("webgl2") as WebGL2RenderingContext | null;
+    // iOS Safari (Metal-backed WebGL) doesn't drain the GPU command queue
+    // before `new VideoFrame(canvas)` snapshots it, so the encoder captures
+    // partial / stale frames and the export flickers (both MP4 and WebM).
+    // createImageBitmap synchronizes with the GPU before producing the bitmap,
+    // so the snapshot reflects a fully rendered frame. Desktop Chrome hides
+    // the bug with internal buffer copies, and `gl.finish()` is a no-op on
+    // iOS's Metal driver — neither is a safe substitute. WebGL2 fenceSync +
+    // clientWaitSync waits correctly but `new VideoFrame(canvas)` on a WebGL
+    // canvas with preserveDrawingBuffer:false (paper-design's default)
+    // produces blank frames after the fence — so we still need the
+    // canvas → ImageBitmap → VideoFrame path. Do not remove this without
+    // testing on real iOS Safari.
     const captureAndEncode = async (outIdx: number) => {
-      gl?.finish();
-      await enc.encodeFrame(canvas, outIdx);
+      const bitmap = await createImageBitmap(canvas);
+      try {
+        await enc.encodeFrame(bitmap, outIdx);
+      } finally {
+        bitmap.close();
+      }
     };
 
     if (config.loopMode === "ping-pong") {
