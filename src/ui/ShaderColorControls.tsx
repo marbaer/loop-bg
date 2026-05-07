@@ -235,12 +235,12 @@ function ArrayControl({
                 }
                 dragHandleProps={{
                   onPointerDown: (e) => {
+                    if (e.pointerType === "touch") return;
                     e.currentTarget.setPointerCapture(e.pointerId);
                     dragStateRef.current = { from: i, over: null, edge: null };
                     setDragIndex(i);
                   },
                   onPointerMove: (e) => {
-                    e.preventDefault(); // suppress page scroll throughout the drag
                     const state = dragStateRef.current;
                     if (state.from < 0) return;
                     const y = e.clientY;
@@ -273,6 +273,61 @@ function ArrayControl({
                   },
                   onPointerCancel: () => {
                     resetDrag();
+                  },
+                  onTouchStart: () => {
+                    dragStateRef.current = { from: i, over: null, edge: null };
+                    setDragIndex(i);
+
+                    function cleanup() {
+                      document.removeEventListener("touchmove", handleMove);
+                      document.removeEventListener("touchend", handleEnd);
+                      document.removeEventListener("touchcancel", handleCancel);
+                    }
+
+                    function handleMove(ev: TouchEvent) {
+                      if (ev.touches.length === 0) return;
+                      ev.preventDefault();
+                      const y = ev.touches[0].clientY;
+                      const state = dragStateRef.current;
+                      if (state.from < 0) return;
+                      let foundOver: number | null = null;
+                      let foundEdge: "top" | "bottom" | null = null;
+                      for (let j = 0; j < itemRefs.current.length; j++) {
+                        const el = itemRefs.current[j];
+                        if (!el) continue;
+                        const rect = el.getBoundingClientRect();
+                        if (y >= rect.top && y <= rect.bottom) {
+                          foundOver = j;
+                          foundEdge = y - rect.top < rect.height / 2 ? "top" : "bottom";
+                          break;
+                        }
+                      }
+                      if (foundOver !== state.over || foundEdge !== state.edge) {
+                        dragStateRef.current = { from: state.from, over: foundOver, edge: foundEdge };
+                        setOverIndex(foundOver);
+                        setOverEdge(foundEdge);
+                      }
+                    }
+
+                    function handleEnd() {
+                      cleanup();
+                      const { from, over, edge } = dragStateRef.current;
+                      if (from >= 0 && over !== null && edge !== null) {
+                        let target = edge === "bottom" ? over + 1 : over;
+                        if (target > from) target -= 1;
+                        reorder(from, target);
+                      }
+                      resetDrag();
+                    }
+
+                    function handleCancel() {
+                      cleanup();
+                      resetDrag();
+                    }
+
+                    document.addEventListener("touchmove", handleMove, { passive: false });
+                    document.addEventListener("touchend", handleEnd);
+                    document.addEventListener("touchcancel", handleCancel);
                   },
                 }}
                 dragging={dragIndex === i}
