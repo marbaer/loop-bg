@@ -190,8 +190,8 @@ input[type="range"]::-moz-range-thumb:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Mobile touch targets — coarse pointer = touchscreen */
-@media (hover: none) and (pointer: coarse) {
+/* Mobile — below lg breakpoint (1024px), matching the app's layout switch */
+@media (max-width: 1023px) {
   /* Taller track area so the slider is easier to tap, larger thumb */
   input[type="range"] {
     height: 32px;

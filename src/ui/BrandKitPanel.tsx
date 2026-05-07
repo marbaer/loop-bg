@@ -63,7 +63,7 @@ export function BrandKitPanel() {
             />
           ) : (
             <span
-              className="flex-1 min-w-0 truncate text-xs text-text cursor-pointer"
+              className="flex-1 min-w-0 truncate text-sm text-text cursor-pointer"
               onDoubleClick={() => { setRenamingId(kit.id); setRenameValue(kit.name); }}
               title="Double-click to rename"
             >

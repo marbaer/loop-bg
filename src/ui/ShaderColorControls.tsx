@@ -235,11 +235,13 @@ function ArrayControl({
                 }
                 dragHandleProps={{
                   onPointerDown: (e) => {
+                    e.preventDefault(); // cancel iOS scroll-candidate before capture locks in
                     e.currentTarget.setPointerCapture(e.pointerId);
                     dragStateRef.current = { from: i, over: null, edge: null };
                     setDragIndex(i);
                   },
                   onPointerMove: (e) => {
+                    e.preventDefault(); // suppress page scroll throughout the drag
                     const state = dragStateRef.current;
                     if (state.from < 0) return;
                     const y = e.clientY;
