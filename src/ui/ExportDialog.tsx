@@ -113,11 +113,10 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           <Field label="Video length">
             <Segmented
               options={[
-                { v: "10", label: "10s" },
+                { v: "15", label: "15s" },
                 { v: "30", label: "30s" },
+                { v: "45", label: "45s" },
                 { v: "60", label: "60s" },
-                { v: "90", label: "90s" },
-                { v: "120", label: "120s" },
               ]}
               value={String(duration)}
               onChange={(v) => setDuration(Number(v))}
@@ -161,33 +160,12 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
             />
           </Field>
 
-          <Field label="Format">
-            <Segmented
-              options={[
-                {
-                  v: "mp4",
-                  label: "MP4 / H.264",
-                  disabled: !!caps && !caps.h264,
-                  title: !!caps && !caps.h264 ? "H.264 not supported in this browser" : undefined,
-                },
-                {
-                  v: "webm",
-                  label: "WebM / VP9",
-                  disabled: !!caps && !caps.vp9,
-                  title: !!caps && !caps.vp9 ? "VP9 not supported in this browser" : undefined,
-                },
-              ]}
-              value={config.format}
-              onChange={(v) => setConfig({ format: v as "mp4" | "webm" })}
-            />
-          </Field>
-
           {preset.kind === "paper" && (
             <Field label="Playback">
               <Segmented
                 options={[
-                  { v: "ping-pong", label: "Ping-pong (seamless)" },
-                  { v: "linear", label: "Linear" },
+                  { v: "ping-pong", label: "Ping-pong" },
+                  { v: "linear", label: "One-way" },
                 ]}
                 value={config.loopMode}
                 onChange={(v) => setConfig({ loopMode: v as "linear" | "ping-pong" })}

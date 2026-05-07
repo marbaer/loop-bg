@@ -59,14 +59,14 @@ export const ASPECT_RATIO_RESOLUTIONS: Record<AspectRatio, ResolutionPreset[]> =
     { width: 1440, height: 2560, label: "1440p" },
   ],
   "1:1": [
-    { width: 720, height: 720, label: "720" },
-    { width: 1080, height: 1080, label: "1080" },
-    { width: 1440, height: 1440, label: "1440" },
+    { width: 720, height: 720, label: "720p" },
+    { width: 1080, height: 1080, label: "1080p" },
+    { width: 1440, height: 1440, label: "1440p" },
   ],
   "4:5": [
-    { width: 864, height: 1080, label: "1080" },
-    { width: 1080, height: 1350, label: "1350" },
-    { width: 1440, height: 1800, label: "1800" },
+    { width: 864, height: 1080, label: "1080p" },
+    { width: 1080, height: 1350, label: "1350p" },
+    { width: 1440, height: 1800, label: "1800p" },
   ],
 };
 
@@ -165,7 +165,7 @@ const hydrated = sharedSnapshot ? applyShareToInitial(sharedSnapshot) : null;
 
 const initialAspectRatio: AspectRatio = hydrated?.aspectRatio ?? "16:9";
 const initialResolution = defaultResolution(initialAspectRatio);
-const initialDuration = hydrated?.durationSeconds ?? 10;
+const initialDuration = hydrated?.durationSeconds ?? 15;
 
 export const useStore = create<AppState>((set, get) => ({
   presetId: hydrated?.presetId ?? presets[0].id,
