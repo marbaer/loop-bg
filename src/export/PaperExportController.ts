@@ -101,13 +101,29 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
     // 10s of preview at speed=2.
     const frameToMs = (frameIdx: number) => (frameIdx * 1000 * speed) / config.fps;
 
+    // iOS Safari (Metal-backed WebGL2) doesn't drain the GPU command queue
+    // before `new VideoFrame(canvas)` snapshots it, so the encoder captures
+    // partial / stale frames and the export flickers (both MP4 and WebM).
+    // createImageBitmap synchronizes with the GPU before producing the bitmap,
+    // so the snapshot reflects a fully rendered frame. Desktop Chrome hides
+    // the bug with internal buffer copies; do not remove this without testing
+    // on real iOS Safari.
+    const captureAndEncode = async (outIdx: number) => {
+      const bitmap = await createImageBitmap(canvas);
+      try {
+        await enc.encodeFrame(bitmap, outIdx);
+      } finally {
+        bitmap.close();
+      }
+    };
+
     if (config.loopMode === "ping-pong") {
       const halfFrames = Math.ceil(totalFrames / 2);
       // Forward: 0 .. halfFrames-1
       for (let i = 0; i < halfFrames; i++) {
         signal?.throwIfAborted();
         mount.setFrame(frameToMs(i));
-        await enc.encodeFrame(canvas, i);
+        await captureAndEncode(i);
       }
       // Reverse: halfFrames-2 .. 0, re-rendering each frame deterministically.
       // setFrame is pure (same input → same output), so no need to buffer.
@@ -116,13 +132,13 @@ export async function runPaperExport(args: PaperExportArgs): Promise<PaperExport
         signal?.throwIfAborted();
         const sourceIdx = Math.max(0, halfFrames - 2 - r);
         mount.setFrame(frameToMs(sourceIdx));
-        await enc.encodeFrame(canvas, halfFrames + r);
+        await captureAndEncode(halfFrames + r);
       }
     } else {
       for (let i = 0; i < totalFrames; i++) {
         signal?.throwIfAborted();
         mount.setFrame(frameToMs(i));
-        await enc.encodeFrame(canvas, i);
+        await captureAndEncode(i);
       }
     }
 
