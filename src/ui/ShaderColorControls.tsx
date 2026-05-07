@@ -96,7 +96,7 @@ function ColorRow({
       {dragHandleProps && (
         <div
           {...dragHandleProps}
-          className="grid h-9 w-7 flex-shrink-0 cursor-grab touch-none place-items-center text-text-subtle hover:text-text active:cursor-grabbing lg:h-8 lg:w-4"
+          className="grid h-11 w-11 flex-shrink-0 cursor-grab touch-none place-items-center text-text-subtle hover:text-text active:cursor-grabbing lg:h-8 lg:w-5"
           title="Drag to reorder"
         >
           <GripIcon />

@@ -52,6 +52,10 @@ body,
 }
 
 body {
+  user-select: none;
+}
+
+body {
   font-family: "Lato", "Inter", ui-sans-serif, system-ui, sans-serif;
   background: rgb(var(--surface));
   color: rgb(var(--text));
@@ -184,4 +188,28 @@ input[type="range"]::-moz-range-thumb {
 
 input[type="range"]::-moz-range-thumb:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Mobile touch targets — coarse pointer = touchscreen */
+@media (hover: none) and (pointer: coarse) {
+  /* Taller track area so the slider is easier to tap, larger thumb */
+  input[type="range"] {
+    height: 32px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -9.5px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Mobile font-size floor: text-sm/xs are comfortable at 14/12px on desktop
+     but too small on touch screens. Bumping text-sm to 16px also prevents
+     iOS Safari from auto-zooming on input focus (threshold is 16px), so
+     inputs inherit the right size without a separate rule. */
+  .text-sm { font-size: 16px; line-height: 1.5; }
+  .text-xs { font-size: 13px; }
 }
