@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore, useActivePreset, useActiveParams, ASPECT_RATIO_RESOLUTIONS } from "../state/store";
 import { buildPalette } from "../color/palette";
-import { runExport } from "../export/ExportController";
+import { runExport, downloadBlob } from "../export/ExportController";
 import { runPaperExport } from "../export/PaperExportController";
 import { runShaderGradientExport } from "../export/ShaderGradientExportController";
+import { runMobileExport } from "../export/MobileExportController";
 import {
   detectCapabilities,
-  shouldUseServerExport,
-  EXPORT_SERVER_URL,
+  shouldUseMobileExport,
   type ExportCapabilities,
 } from "../export/capabilities";
-import { downloadBlob } from "../export/ExportController";
 import { Button } from "./Button";
 
 export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -30,7 +29,6 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isServerExport, setIsServerExport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [caps, setCaps] = useState<ExportCapabilities | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -59,19 +57,24 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const useServer = shouldUseServerExport();
-    setIsServerExport(useServer);
-
     try {
       const palette = buildPalette(accentHex, mode, { bgLightness, overrides });
 
-      if (useServer) {
-        await runServerExport({ controller, palette });
+      if (shouldUseMobileExport()) {
+        const result = await runMobileExport({
+          preset,
+          params,
+          palette,
+          image: preset.kind === "paper" && preset.usesImage ? (uploadedImage ?? null) : null,
+          config,
+          signal: controller.signal,
+          onProgress: (frame, total) => setProgress(frame / total),
+        });
+        downloadBlob(result.blob, result.filename);
         onClose();
         return;
       }
 
-      // Desktop: existing browser-side export path — unchanged.
       if (preset.kind === "paper") {
         const componentProps = preset.propsFor(
           params,
@@ -121,48 +124,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       abortRef.current = null;
       setBusy(false);
       setProgress(0);
-      setIsServerExport(false);
     }
-  }
-
-  async function runServerExport({
-    controller,
-    palette,
-  }: {
-    controller: AbortController;
-    palette: ReturnType<typeof buildPalette>;
-  }): Promise<void> {
-    const ext = config.format;
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const filename = `loop-bg-${preset.id}-${config.width}x${config.height}-${stamp}.${ext}`;
-
-    const body: Record<string, unknown> = {
-      presetId: preset.id,
-      params,
-      palette,
-      image: preset.kind === "paper" && preset.usesImage ? (uploadedImage ?? null) : null,
-      duration: config.durationSeconds,
-      fps: config.fps,
-      width: config.width,
-      height: config.height,
-      format: config.format,
-      loopMode: config.loopMode,
-    };
-
-    const response = await fetch(`${EXPORT_SERVER_URL}/export`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const text = await response.text().catch(() => "Unknown error");
-      throw new Error(`Server export failed: ${text}`);
-    }
-
-    const blob = await response.blob();
-    downloadBlob(blob, filename);
   }
 
   return (
@@ -262,12 +224,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         )}
 
-        {busy && isServerExport && (
-          <div className="mt-3 text-xs text-text">
-            Rendering on server…
-          </div>
-        )}
-        {busy && !isServerExport && (
+        {busy && (
           <div className="mt-3 space-y-1.5">
             <div className="h-1.5 overflow-hidden rounded-full bg-overlay-2">
               <div
@@ -298,7 +255,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
             onClick={onExport}
             disabled={busy}
           >
-            {busy && isServerExport ? "Rendering…" : busy ? "Encoding…" : "Export"}
+            {busy ? "Encoding…" : "Export"}
           </Button>
         </div>
       </div>

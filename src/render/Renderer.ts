@@ -18,11 +18,11 @@ export class Renderer {
   private programCache: ProgramCache | null = null;
   private vao: WebGLVertexArrayObject | null = null;
 
-  constructor(canvas: HTMLCanvasElement | OffscreenCanvas) {
+  constructor(canvas: HTMLCanvasElement | OffscreenCanvas, options: { preserveDrawingBuffer?: boolean } = {}) {
     const gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
       antialias: false,
       alpha: false,
-      preserveDrawingBuffer: false,
+      preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
       premultipliedAlpha: true,
     }) as WebGL2RenderingContext | null;
     if (!gl) throw new Error("WebGL2 not supported");
