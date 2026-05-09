@@ -47,6 +47,23 @@ function probeFenceSync(): boolean {
   }
 }
 
+/** URL of the server-side export service. Override with VITE_EXPORT_SERVER_URL
+ *  in .env.local for local development (set to http://localhost:3000). */
+export const EXPORT_SERVER_URL: string =
+  (import.meta as unknown as { env: Record<string, string> }).env.VITE_EXPORT_SERVER_URL ??
+  "https://loopbg5eb06312-export.functions.fnc.fr-par.scw.cloud";
+
+/** True when the device is mobile and should use server-side rendering.
+ *  Desktop WebCodecs is fast and reliable; mobile WebCodecs is the problem. */
+export function shouldUseServerExport(): boolean {
+  const ua = navigator.userAgent;
+  return (
+    /iP(hone|ad|od)/.test(ua) ||
+    /Android/.test(ua) ||
+    (("ontouchstart" in window) && navigator.maxTouchPoints > 1)
+  );
+}
+
 export function bitrateFor(width: number, height: number, quality: "standard" | "high" | "max", fps: number = 30): number {
   // Calibrated to observed output: ~4 Mbps @ 1080p / High / 30fps for smooth shader animations.
   const px = width * height;
