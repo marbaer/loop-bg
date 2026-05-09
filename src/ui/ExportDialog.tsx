@@ -27,6 +27,10 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
   const preset = useActivePreset();
   const params = useActiveParams();
 
+  const isMobile = shouldUseMobileExport();
+  // On mobile, hide the highest resolution — it can be too slow to render.
+  const visibleResolutions = isMobile ? resolutions.slice(0, -1) : resolutions;
+
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +42,18 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       detectCapabilities().then(setCaps);
       setError(null);
       setProgress(0);
+      if (isMobile) {
+        // Step down from hidden highest resolution.
+        const highest = resolutions[resolutions.length - 1];
+        if (config.width === highest.width && config.height === highest.height) {
+          const fallback = resolutions[resolutions.length - 2];
+          setConfig({ width: fallback.width, height: fallback.height });
+        }
+        // Cap duration at 30s.
+        if (duration > 30) setDuration(30);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // If caps loaded and the currently-selected format isn't supported, fall
@@ -150,8 +165,10 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
               options={[
                 { v: "15", label: "15s" },
                 { v: "30", label: "30s" },
-                { v: "45", label: "45s" },
-                { v: "60", label: "60s" },
+                ...(!isMobile ? [
+                  { v: "45", label: "45s" },
+                  { v: "60", label: "60s" },
+                ] : []),
               ]}
               value={String(duration)}
               onChange={(v) => setDuration(Number(v))}
@@ -160,7 +177,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
           <Field label="Resolution">
             <Segmented
-              options={resolutions.map((r) => ({
+              options={visibleResolutions.map((r) => ({
                 v: `${r.width}x${r.height}`,
                 label: r.label,
               }))}
@@ -172,28 +189,32 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
             />
           </Field>
 
-          <Field label="Frame rate">
-            <Segmented
-              options={[
-                { v: "30", label: "30 fps" },
-                { v: "60", label: "60 fps" },
-              ]}
-              value={String(config.fps)}
-              onChange={(v) => setConfig({ fps: Number(v) as 30 | 60 })}
-            />
-          </Field>
+          {!isMobile && (
+            <Field label="Frame rate">
+              <Segmented
+                options={[
+                  { v: "30", label: "30 fps" },
+                  { v: "60", label: "60 fps" },
+                ]}
+                value={String(config.fps)}
+                onChange={(v) => setConfig({ fps: Number(v) as 30 | 60 })}
+              />
+            </Field>
+          )}
 
-          <Field label="Quality">
-            <Segmented
-              options={[
-                { v: "standard", label: "Standard" },
-                { v: "high", label: "High" },
-                { v: "max", label: "Max" },
-              ]}
-              value={config.quality}
-              onChange={(v) => setConfig({ quality: v as typeof config.quality })}
-            />
-          </Field>
+          {!isMobile && (
+            <Field label="Quality">
+              <Segmented
+                options={[
+                  { v: "standard", label: "Standard" },
+                  { v: "high", label: "High" },
+                  { v: "max", label: "Max" },
+                ]}
+                value={config.quality}
+                onChange={(v) => setConfig({ quality: v as typeof config.quality })}
+              />
+            </Field>
+          )}
 
           {(preset.kind === "paper" ||
             (preset.kind === "shadergradient" && params.loop !== "on")) && (
