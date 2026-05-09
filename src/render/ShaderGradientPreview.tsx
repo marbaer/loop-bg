@@ -39,8 +39,16 @@ export function ShaderGradientPreview({ preset }: { preset: ShaderGradientPreset
   //     visual character; the export pipeline mirrors via ping-pong to make
   //     the loop seamless without altering the shader's character.
   const loopOn = rest.loop === "on";
+  // ShaderGradient's Lights component sets ambientLight.intensity = brightness * π.
+  // That formula targets three.js r169+ (physically-correct lights default) where
+  // the PBR BRDF normalises by 1/π, so the net contribution is just brightness.
+  // We ship three.js r154 with legacy lights where the same cancellation does NOT
+  // happen inside getAmbientLightIrradiance, leaving the scene π× too bright.
+  // Dividing here restores the intended visual range that shadergradient.co shows.
+  const brightness = typeof rest.brightness === "number" ? rest.brightness / Math.PI : rest.brightness;
   const sgProps = {
     ...rest,
+    brightness,
     color1: colors[0] ?? "#ffffff",
     color2: colors[1] ?? "#ffffff",
     color3: colors[2] ?? "#ffffff",
@@ -77,11 +85,13 @@ export function ShaderGradientPreview({ preset }: { preset: ShaderGradientPreset
           ?.loseContext();
       }
     };
-  }, [preset.id]);
+  }, []);
 
   return (
-    <div ref={hostRef} style={{ width: "100%", height: "100%", display: "block" }}>
-      <ShaderGradientCanvas style={{ width: "100%", height: "100%" }}>
+    <div ref={hostRef} style={{ width: "100%", height: "100%", display: "block", background: "#000" }}>
+      <ShaderGradientCanvas threshold={0} rootMargin="100px" style={{ width: "100%", height: "100%" }}>
+        {/* R3F scene background — prevents transparent canvas from showing the white page through */}
+        <color attach="background" args={["#000000"]} />
         <ShaderGradient
           control="props"
           enableCameraUpdate

@@ -281,6 +281,9 @@ async function exportShaderGradient(
     smoothTime: 0,
   };
   delete baseProps.colors;
+  if (typeof baseProps.brightness === "number") {
+    baseProps.brightness = baseProps.brightness / Math.PI;
+  }
 
   let setUTime: ((t: number) => void) | null = null;
 

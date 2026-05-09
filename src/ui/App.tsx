@@ -66,7 +66,7 @@ export function App() {
             ) : preset.kind === "r3f" ? (
               <R3FPreview preset={preset} />
             ) : preset.kind === "shadergradient" ? (
-              <ShaderGradientPreview preset={preset} />
+              <ShaderGradientPreview key={preset.id} preset={preset} />
             ) : (
               <PaperPreview preset={preset} />
             )}

@@ -42,6 +42,13 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       detectCapabilities().then(setCaps);
       setError(null);
       setProgress(0);
+      const validDurations = isMobile ? [15, 30] : [15, 30, 45, 60];
+      if (!validDurations.includes(duration)) {
+        const closest = validDurations.reduce((a, b) =>
+          Math.abs(b - duration) < Math.abs(a - duration) ? b : a
+        );
+        setDuration(closest);
+      }
       if (isMobile) {
         // Step down from hidden highest resolution.
         const highest = resolutions[resolutions.length - 1];
@@ -229,9 +236,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
               />
               <div className="mt-1 text-xs text-text">
                 {config.loopMode === "ping-pong"
-                  ? `Captures ${Math.ceil(config.durationSeconds / 2)}s forward, plays remaining ${
-                      config.durationSeconds - Math.ceil(config.durationSeconds / 2)
-                    }s in reverse → seamless`
+                  ? "Plays to the midpoint then reverses — first and last frames match"
                   : "Frames captured in sequence — first and last frames won't match"}
               </div>
             </Field>

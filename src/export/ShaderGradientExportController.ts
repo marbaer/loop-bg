@@ -92,6 +92,11 @@ export async function runShaderGradientExport(
     smoothTime: 0,
   };
   delete baseProps.colors;
+  // Mirror the same brightness correction applied in ShaderGradientPreview:
+  // divide by π to compensate for three.js r154 legacy lights mode.
+  if (typeof baseProps.brightness === "number") {
+    baseProps.brightness = baseProps.brightness / Math.PI;
+  }
 
   let setExternalUTime: ((t: number) => void) | null = null;
 
