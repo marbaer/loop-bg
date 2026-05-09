@@ -6,6 +6,7 @@ import { Renderer } from "../render/Renderer";
 import { PreviewLoop } from "../render/PreviewLoop";
 import { R3FPreview } from "../render/R3FPreview";
 import { PaperPreview } from "../render/PaperPreview";
+import { ShaderGradientPreview } from "../render/ShaderGradientPreview";
 import { PresetCurrentCard } from "./PresetCurrentCard";
 import { ColorPicker } from "./ColorPicker";
 import { ParamControls } from "./ParamControls";
@@ -44,7 +45,9 @@ export function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  const showVariants = preset.kind === "paper" && (preset.variants?.length ?? 0) > 1;
+  const showVariants =
+    (preset.kind === "paper" || preset.kind === "shader") &&
+    (preset.variants?.length ?? 0) > 1;
 
   return (
     <div className="flex min-h-full w-full flex-col bg-surface text-text lg:h-full lg:flex-row">
@@ -62,6 +65,8 @@ export function App() {
               <ShaderPreview />
             ) : preset.kind === "r3f" ? (
               <R3FPreview preset={preset} />
+            ) : preset.kind === "shadergradient" ? (
+              <ShaderGradientPreview preset={preset} />
             ) : (
               <PaperPreview preset={preset} />
             )}
@@ -73,7 +78,7 @@ export function App() {
             variant="primary"
             onClick={() => setExportOpen(true)}
             disabled={preset.kind === "r3f"}
-            title={preset.kind === "r3f" ? "Export not wired up for R3F presets" : undefined}
+            title={preset.kind === "r3f" ? "Export not wired up for legacy R3F presets" : undefined}
           >
             Export video
           </Button>
@@ -117,7 +122,7 @@ export function App() {
         <Section title="Preset">
           <div className="space-y-2">
             <PresetCurrentCard />
-            {showVariants && preset.kind === "paper" && (
+            {showVariants && (preset.kind === "paper" || preset.kind === "shader") && (
               <VariantSelector preset={preset} />
             )}
           </div>

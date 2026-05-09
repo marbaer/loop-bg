@@ -9,8 +9,8 @@ const CHROME_FLAGS = [
   "--enable-unsafe-swiftshader",
   // Prevent /dev/shm exhaustion in Docker containers.
   "--disable-dev-shm-usage",
-  "--disable-gpu-sandbox",
-  "--single-process",
+  // --single-process and --disable-gpu-sandbox crash Chrome on macOS; Linux/Docker only.
+  ...(process.platform !== "darwin" ? ["--disable-gpu-sandbox", "--single-process"] : []),
   // Ensure rAF fires at full speed in headless mode.
   "--disable-frame-rate-limit",
   "--run-all-compositor-stages-before-draw",

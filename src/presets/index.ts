@@ -18,6 +18,10 @@ import { softBlobs } from "./soft-blobs";
 import { aurora } from "./aurora";
 import { ribbons } from "./ribbons";
 import { layers } from "./layers";
+import { loupe } from "./loupe";
+import { blob } from "./blob";
+import { gradient } from "./gradient";
+import { shaderGradientPresets } from "./shadergradient";
 
 export const presets = [
   // Modern abstract backgrounds
@@ -43,5 +47,10 @@ export const presets = [
   aurora,
   ribbons,
   layers,
+  loupe,
+  blob,
+  gradient,
+  // ShaderGradient — 3D draggable gradients (drag to rotate, scroll to zoom).
+  ...shaderGradientPresets,
 ];
 export type { Preset, ParamSchema, ParamValues } from "./types";

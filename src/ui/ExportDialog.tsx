@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore, useActivePreset, useActiveParams, ASPECT_RATIO_RESOLUTIONS } from "../state/store";
 import { buildPalette } from "../color/palette";
-import { runExport, downloadBlob } from "../export/ExportController";
+import { runExport } from "../export/ExportController";
 import { runPaperExport } from "../export/PaperExportController";
-import { detectCapabilities, type ExportCapabilities } from "../export/capabilities";
+import { runShaderGradientExport } from "../export/ShaderGradientExportController";
+import {
+  detectCapabilities,
+  shouldUseServerExport,
+  EXPORT_SERVER_URL,
+  type ExportCapabilities,
+} from "../export/capabilities";
+import { downloadBlob } from "../export/ExportController";
 import { Button } from "./Button";
 
 export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -23,6 +30,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isServerExport, setIsServerExport] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [caps, setCaps] = useState<ExportCapabilities | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -50,8 +58,20 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
     setError(null);
     const controller = new AbortController();
     abortRef.current = controller;
+
+    const useServer = shouldUseServerExport();
+    setIsServerExport(useServer);
+
     try {
       const palette = buildPalette(accentHex, mode, { bgLightness, overrides });
+
+      if (useServer) {
+        await runServerExport({ controller, palette });
+        onClose();
+        return;
+      }
+
+      // Desktop: existing browser-side export path — unchanged.
       if (preset.kind === "paper") {
         const componentProps = preset.propsFor(
           params,
@@ -61,6 +81,18 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
         const result = await runPaperExport({
           preset,
           componentProps,
+          config,
+          signal: controller.signal,
+          onProgress: (frame, total) => setProgress(frame / total),
+        });
+        downloadBlob(result.blob, result.filename);
+        onClose();
+        return;
+      }
+      if (preset.kind === "shadergradient") {
+        const result = await runShaderGradientExport({
+          preset,
+          params,
           config,
           signal: controller.signal,
           onProgress: (frame, total) => setProgress(frame / total),
@@ -89,12 +121,53 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       abortRef.current = null;
       setBusy(false);
       setProgress(0);
+      setIsServerExport(false);
     }
+  }
+
+  async function runServerExport({
+    controller,
+    palette,
+  }: {
+    controller: AbortController;
+    palette: ReturnType<typeof buildPalette>;
+  }): Promise<void> {
+    const ext = config.format;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const filename = `loop-bg-${preset.id}-${config.width}x${config.height}-${stamp}.${ext}`;
+
+    const body: Record<string, unknown> = {
+      presetId: preset.id,
+      params,
+      palette,
+      image: preset.kind === "paper" && preset.usesImage ? (uploadedImage ?? null) : null,
+      duration: config.durationSeconds,
+      fps: config.fps,
+      width: config.width,
+      height: config.height,
+      format: config.format,
+      loopMode: config.loopMode,
+    };
+
+    const response = await fetch(`${EXPORT_SERVER_URL}/export`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "Unknown error");
+      throw new Error(`Server export failed: ${text}`);
+    }
+
+    const blob = await response.blob();
+    downloadBlob(blob, filename);
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover p-5 text-text shadow-2xl">
+      <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover/80 p-5 text-text shadow-2xl backdrop-blur-md">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-headline font-semibold text-text">Export video</h2>
           <button
@@ -102,7 +175,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
               if (busy) abortRef.current?.abort();
               else onClose();
             }}
-            className="text-text-subtle hover:text-text"
+            className="text-text"
             aria-label="Close"
           >
             ✕
@@ -160,7 +233,8 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
             />
           </Field>
 
-          {preset.kind === "paper" && (
+          {(preset.kind === "paper" ||
+            (preset.kind === "shadergradient" && params.loop !== "on")) && (
             <Field label="Playback">
               <Segmented
                 options={[
@@ -170,7 +244,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
                 value={config.loopMode}
                 onChange={(v) => setConfig({ loopMode: v as "linear" | "ping-pong" })}
               />
-              <div className="mt-1 text-xs text-text-subtle">
+              <div className="mt-1 text-xs text-text">
                 {config.loopMode === "ping-pong"
                   ? `Captures ${Math.ceil(config.durationSeconds / 2)}s forward, plays remaining ${
                       config.durationSeconds - Math.ceil(config.durationSeconds / 2)
@@ -188,7 +262,12 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         )}
 
-        {busy && (
+        {busy && isServerExport && (
+          <div className="mt-3 text-xs text-text">
+            Rendering on server…
+          </div>
+        )}
+        {busy && !isServerExport && (
           <div className="mt-3 space-y-1.5">
             <div className="h-1.5 overflow-hidden rounded-full bg-overlay-2">
               <div
@@ -196,7 +275,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
                 style={{ width: `${progress * 100}%` }}
               />
             </div>
-            <div className="text-xs text-text-subtle">
+            <div className="text-xs text-text">
               Encoding… {Math.round(progress * 100)}%
             </div>
           </div>
@@ -219,7 +298,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
             onClick={onExport}
             disabled={busy}
           >
-            {busy ? "Encoding…" : "Export"}
+            {busy && isServerExport ? "Rendering…" : busy ? "Encoding…" : "Export"}
           </Button>
         </div>
       </div>
@@ -230,7 +309,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-1 text-xs uppercase tracking-wider text-text-subtle">{label}</div>
+      <div className="mb-1 text-xs uppercase tracking-wider text-text">{label}</div>
       {children}
     </div>
   );
@@ -259,7 +338,7 @@ function Segmented<T extends string>({
               ? "cursor-not-allowed border-border bg-overlay-1 text-text-subtle/50"
               : value === o.v
                 ? "border-accent/60 bg-accent/15 text-text"
-                : "border-border bg-overlay-1 text-text-muted hover:border-border-strong")
+                : "border-border bg-overlay-1 text-text hover:border-border-strong")
           }
         >
           {o.label}

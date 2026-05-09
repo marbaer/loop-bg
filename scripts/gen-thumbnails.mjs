@@ -37,7 +37,7 @@ const THUMB_WIDTH = 480;
 const THUMB_HEIGHT = 270;
 const SETTLE_MS = 800;
 
-const PRESET_IDS = [
+const ALL_PRESET_IDS = [
   "paper-mesh-gradient",
   "paper-grain-gradient",
   "paper-warp",
@@ -58,7 +58,25 @@ const PRESET_IDS = [
   "aurora",
   "ribbons",
   "layers",
+  "loupe",
+  "blob",
+  "gradient",
+  "shadergradient-halo",
+  "shadergradient-pensive",
+  "shadergradient-mint",
+  "shadergradient-interstella",
+  "shadergradient-nightyNight",
+  "shadergradient-violaOrientalis",
+  "shadergradient-universe",
+  "shadergradient-sunset",
+  "shadergradient-mandarin",
+  "shadergradient-cottonCandy",
 ];
+
+// CLI: pass preset ids as args to regenerate just those (e.g. `node
+// scripts/gen-thumbnails.mjs loupe blob`). With no args, regenerate all.
+const argIds = process.argv.slice(2).filter(Boolean);
+const PRESET_IDS = argIds.length > 0 ? argIds : ALL_PRESET_IDS;
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
@@ -85,8 +103,10 @@ async function main() {
 
     // Wait for the canvas to be present (it unmounts/remounts when switching
     // between shader ↔ paper ↔ r3f renderers) then give it time to render.
+    // ShaderGradient (R3F) takes longer to compose lighting + camera settle.
     await page.waitForSelector("canvas", { state: "visible", timeout: 5000 });
-    await page.waitForTimeout(SETTLE_MS);
+    const settle = id.startsWith("shadergradient-") ? 2000 : SETTLE_MS;
+    await page.waitForTimeout(settle);
 
     // Grab the canvas and screenshot it at thumbnail resolution
     const canvas = page.locator("canvas").first();

@@ -199,13 +199,20 @@ export const useStore = create<AppState>((set, get) => ({
   setPreset: (id) => set({ presetId: id }),
   setUploadedImage: (dataUrl) => set({ uploadedImage: dataUrl }),
   applyVariant: (presetId, variantName, variantParams) =>
-    set((s) => ({
-      variantByPreset: { ...s.variantByPreset, [presetId]: variantName },
-      paramsByPreset: {
-        ...s.paramsByPreset,
-        [presetId]: { ...(variantParams as ParamValues) },
-      },
-    })),
+    set((s) => {
+      // Layer variant params on top of the preset's defaults so a sparse
+      // variant (e.g. one that only overrides colors) keeps all the
+      // geometry/parameter knobs at sensible values instead of zeroing them.
+      const preset = presets.find((p) => p.id === presetId);
+      const base = preset?.defaults ?? {};
+      return {
+        variantByPreset: { ...s.variantByPreset, [presetId]: variantName },
+        paramsByPreset: {
+          ...s.paramsByPreset,
+          [presetId]: { ...base, ...(variantParams as ParamValues) },
+        },
+      };
+    }),
   clearVariant: (presetId) =>
     set((s) => {
       const { [presetId]: _, ...rest } = s.variantByPreset;

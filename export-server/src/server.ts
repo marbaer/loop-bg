@@ -28,15 +28,14 @@ const sessions = new Map<string, Session>();
 
 const app = express();
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-      cb(new Error("Not allowed by CORS"));
-    },
-    methods: ["POST", "OPTIONS"],
-  })
-);
+// CORS only applies to the public /export endpoint — /frame is loopback-only.
+const publicCors = cors({
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error("Not allowed by CORS"));
+  },
+  methods: ["POST", "OPTIONS"],
+});
 
 app.use(express.json({ limit: "1mb" }));
 
@@ -47,7 +46,8 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/export", async (req: Request, res: Response): Promise<void> => {
+app.options("/export", publicCors);
+app.post("/export", publicCors, async (req: Request, res: Response): Promise<void> => {
   const validated = validate(req.body);
   if ("error" in validated) {
     res.status(400).json({ error: validated.error });
@@ -80,7 +80,9 @@ app.post("/export", async (req: Request, res: Response): Promise<void> => {
   sessions.set(sessionId, session);
 
   // Cancel everything if the client disconnects mid-render.
-  req.on("close", () => {
+  // Use res.on("close") — not req.on("close"), which fires too early in modern
+  // Node.js because IncomingMessage auto-destroys after body-parser reads the body.
+  res.on("close", () => {
     if (!res.writableEnded) {
       abortController.abort();
       ffmpegProc.kill("SIGTERM");
@@ -118,7 +120,8 @@ app.post(
   "/frame/:sessionId",
   express.raw({ type: "*/*", limit: "20mb" }),
   (req: Request, res: Response): void => {
-    const session = sessions.get(req.params.sessionId as string);
+    const sid = req.params.sessionId as string;
+    const session = sessions.get(sid);
     if (!session) {
       res.status(404).end();
       return;

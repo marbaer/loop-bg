@@ -34,6 +34,10 @@ export interface ShaderPreset extends PresetBase {
   /** When defined, ShaderColorControls replaces the global ColorPicker —
    *  colors are stored directly in paramsByPreset rather than derived from palette. */
   colorSlots?: ColorSlot[];
+  /** Named variants exposed in the UI as a pill selector above the params
+   *  (same UX as paper-design library variants). Selecting one merges its
+   *  params into the user's stored params. */
+  variants?: PaperVariant[];
 }
 
 /** React Three Fiber scene preset. The Scene component receives params, palette
@@ -51,6 +55,20 @@ export interface SceneProps {
 export interface R3FPreset extends PresetBase {
   kind: "r3f";
   Scene: ComponentType<SceneProps>;
+}
+
+/** Preset family backed by @shadergradient/react. The component owns its own
+ *  R3F Canvas (ShaderGradientCanvas) and camera-controls, so we don't render
+ *  it through the generic R3FPreview. Params are passed straight through to
+ *  the ShaderGradient component as GradientT props (color1/2/3, uSpeed, etc.).
+ *  Camera state (cAzimuthAngle/cPolarAngle/cDistance/cameraZoom) is also
+ *  stored in params so it persists across preset switches and shareable URLs;
+ *  the onCameraUpdate callback writes drag/zoom changes back. */
+export interface ShaderGradientPreset extends PresetBase {
+  kind: "shadergradient";
+  /** Color slots so the global color picker / brand-kit applier can target
+   *  color1/color2/color3 like any other preset. */
+  colorSlots?: ColorSlot[];
 }
 
 /** A paper-design/shaders-react preset. The `Component` is the paper shader
@@ -109,7 +127,7 @@ export interface PaperPreset extends PresetBase {
   colorSlots?: ColorSlot[];
 }
 
-export type Preset = ShaderPreset | R3FPreset | PaperPreset;
+export type Preset = ShaderPreset | R3FPreset | PaperPreset | ShaderGradientPreset;
 
 export function defaultsFromSchema(schema: ParamSchema[]): ParamValues {
   const out: ParamValues = {};

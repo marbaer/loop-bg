@@ -16,3 +16,6 @@ dist
 *.log
 .vite
 tsconfig.tsbuildinfo
+dist-harness/
+export-server/public/
+export-server/dist/

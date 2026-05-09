@@ -1,6 +1,40 @@
 import { useActivePreset, useActiveParams, useStore } from "../state/store";
 import type { ParamSchema, ParamValue } from "../presets/types";
 
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 py-0.5 cursor-pointer">
+      <span className="text-sm text-text-muted">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        className={
+          "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors " +
+          (checked ? "bg-accent" : "bg-overlay-2")
+        }
+      >
+        <span
+          className={
+            "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform " +
+            (checked ? "translate-x-[1.125rem]" : "translate-x-0.5")
+          }
+        />
+      </button>
+    </label>
+  );
+}
+
 export function ParamControls() {
   const preset = useActivePreset();
   const params = useActiveParams();
@@ -31,6 +65,20 @@ function Control({
 }) {
   if (schema.kind === "select") {
     const current = typeof value === "string" ? value : schema.default;
+    // Binary on/off selects render as a switch toggle with the label inline,
+    // not as a pair of pills. Any other 2+ option select stays as pills.
+    const isOnOff =
+      schema.options.length === 2 &&
+      schema.options.every((o) => o.value === "on" || o.value === "off");
+    if (isOnOff) {
+      return (
+        <ToggleRow
+          label={schema.label}
+          checked={current === "on"}
+          onChange={(on) => onChange(on ? "on" : "off")}
+        />
+      );
+    }
     return (
       <div>
         <div className="mb-1 text-sm text-text-muted">{schema.label}</div>

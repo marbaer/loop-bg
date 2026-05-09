@@ -2,21 +2,26 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useActivePreset, useStore } from "../state/store";
 import { presets } from "../presets";
 
-type PresetGroup = { label: string; ids: Set<string> };
+type PresetGroup = { id: string; label: string; ids: Set<string> };
 
 function buildGroups(): PresetGroup[] {
-  // Paper Shader presets (from the paper-design library) all have ids prefixed
-  // with `paper-`. Everything else is hand-rolled for Loop BG.
   const paper = new Set<string>();
+  const shaderGradient = new Set<string>();
   const custom = new Set<string>();
   for (const p of presets) {
     if (p.id.startsWith("paper-")) paper.add(p.id);
+    else if (p.id.startsWith("shadergradient-")) shaderGradient.add(p.id);
     else custom.add(p.id);
   }
   return [
-    { label: "Paper shaders", ids: paper },
-    { label: "Loop BG", ids: custom },
+    { id: "paper", label: "Paper shaders", ids: paper },
+    { id: "shadergradient", label: "Shader Gradient", ids: shaderGradient },
+    { id: "loopbg", label: "Loop BG", ids: custom },
   ];
+}
+
+function groupForId(id: string, groups: PresetGroup[]): string {
+  return groups.find((g) => g.ids.has(id))?.id ?? groups[0].id;
 }
 
 export function PresetCurrentCard() {
@@ -26,6 +31,14 @@ export function PresetCurrentCard() {
   const popRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const groups = useMemo(buildGroups, []);
+  const [activeTab, setActiveTab] = useState<string>(() => groupForId(preset.id, groups));
+
+  // When the active preset changes (e.g. via shareable URL or programmatic set
+  // outside the dropdown), realign the open tab so the user sees their preset
+  // highlighted next time they open the picker.
+  useEffect(() => {
+    setActiveTab(groupForId(preset.id, groups));
+  }, [preset.id, groups]);
 
   useEffect(() => {
     if (!open) return;
@@ -78,52 +91,73 @@ export function PresetCurrentCard() {
       {open && (
         <div
           ref={popRef}
-          className="absolute left-0 right-0 top-full z-40 mt-1.5 max-h-[60vh] space-y-3 overflow-y-auto rounded-lg border border-border bg-surface-popover p-2 shadow-panel"
+          className="absolute left-0 right-0 top-full z-40 mt-1.5 flex max-h-[60vh] flex-col rounded-lg border border-border bg-surface-popover shadow-panel"
         >
-          {groups.map((g) => {
-            const items = presets.filter((p) => g.ids.has(p.id));
-            if (items.length === 0) return null;
-            return (
-              <div key={g.label} className="space-y-1.5">
-                <div className="px-1 text-xs font-medium uppercase tracking-wider text-text-subtle">
+          <div
+            role="tablist"
+            className="flex shrink-0 gap-1 overflow-x-auto border-b border-border p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {groups.map((g) => {
+              if (g.ids.size === 0) return null;
+              const active = activeTab === g.id;
+              return (
+                <button
+                  key={g.id}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(g.id)}
+                  className={
+                    "shrink-0 whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-medium uppercase tracking-wider transition " +
+                    (active
+                      ? "bg-accent/15 text-accent"
+                      : "text-text-subtle hover:bg-overlay-2 hover:text-text")
+                  }
+                >
                   {g.label}
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {items.map((p) => {
-                    const active = p.id === preset.id;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setPreset(p.id);
-                          setOpen(false);
-                        }}
-                        className={
-                          "group relative overflow-hidden rounded border px-2.5 py-2 text-left transition " +
-                          (active
-                            ? "border-accent/60 bg-accent/15"
-                            : "border-border bg-overlay-1 hover:border-border-strong hover:bg-overlay-2")
-                        }
-                      >
-                        <img
-                          src={`${import.meta.env.BASE_URL}thumbnails/${p.id}.jpg`}
-                          alt=""
-                          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                          draggable={false}
-                        />
-                        <div className="relative z-10 truncate text-sm font-medium text-text transition-colors duration-150 group-hover:text-white group-hover:[text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
-                          {p.name}
-                        </div>
-                        <div className="relative z-10 line-clamp-2 text-xs leading-tight text-text-subtle transition-opacity duration-150 group-hover:opacity-0">
-                          {p.description}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="grid grid-cols-2 gap-1.5">
+              {presets
+                .filter((p) => {
+                  const group = groups.find((g) => g.id === activeTab);
+                  return group?.ids.has(p.id);
+                })
+                .map((p) => {
+                  const active = p.id === preset.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setPreset(p.id);
+                        setOpen(false);
+                      }}
+                      className={
+                        "group relative overflow-hidden rounded border px-2.5 py-2 text-left transition " +
+                        (active
+                          ? "border-accent/60 bg-accent/15"
+                          : "border-border bg-overlay-1 hover:border-border-strong hover:bg-overlay-2")
+                      }
+                    >
+                      <img
+                        src={`${import.meta.env.BASE_URL}thumbnails/${p.id}.jpg`}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                        draggable={false}
+                      />
+                      <div className="relative z-10 truncate text-sm font-medium text-text transition-colors duration-150 group-hover:text-white group-hover:[text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
+                        {p.name}
+                      </div>
+                      <div className="relative z-10 line-clamp-2 text-xs leading-tight text-text-subtle transition-opacity duration-150 group-hover:opacity-0">
+                        {p.description}
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -136,7 +170,7 @@ function KindBadge({ kind }: { kind: string }) {
       className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-sm bg-accent/15 font-mono text-xs uppercase tracking-wider text-accent"
       title={kind}
     >
-      {kind === "shader" ? "SH" : kind === "r3f" ? "3D" : "PA"}
+      {kind === "shader" ? "LO" : kind === "r3f" ? "3D" : kind === "shadergradient" ? "SG" : "PA"}
     </div>
   );
 }
