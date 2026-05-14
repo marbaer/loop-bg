@@ -36,6 +36,15 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
   const [error, setError] = useState<string | null>(null);
   const [caps, setCaps] = useState<ExportCapabilities | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const animProgressRef = useRef(0);
+  const animRafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -70,6 +79,43 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
     if (config.format === "mp4" && !caps.h264 && caps.vp9) setConfig({ format: "webm" });
     else if (config.format === "webm" && !caps.vp9 && caps.h264) setConfig({ format: "mp4" });
   }, [caps, config.format, setConfig]);
+
+  useEffect(() => {
+    if (!busy) {
+      if (animRafRef.current !== null) cancelAnimationFrame(animRafRef.current);
+      animRafRef.current = null;
+      animProgressRef.current = 0;
+      if (barRef.current) barRef.current.style.setProperty("--bar-progress", "0");
+    }
+  }, [busy]);
+
+  useEffect(() => {
+    const target = progress;
+    const step = () => {
+      const cur = animProgressRef.current;
+      const delta = target - cur;
+      if (delta <= 0) {
+        animProgressRef.current = target;
+        if (barRef.current) barRef.current.style.setProperty("--bar-progress", String(target));
+        animRafRef.current = null;
+        return;
+      }
+      animProgressRef.current = delta < 0.0005 ? target : cur + delta * 0.1;
+      if (barRef.current)
+        barRef.current.style.setProperty("--bar-progress", String(animProgressRef.current));
+      if (animProgressRef.current < target - 0.0005) {
+        animRafRef.current = requestAnimationFrame(step);
+      } else {
+        animProgressRef.current = target;
+        animRafRef.current = null;
+      }
+    };
+    if (animRafRef.current !== null) cancelAnimationFrame(animRafRef.current);
+    animRafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (animRafRef.current !== null) cancelAnimationFrame(animRafRef.current);
+    };
+  }, [progress]);
 
   if (!open) return null;
 
@@ -137,9 +183,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       downloadBlob(result.blob, result.filename);
       onClose();
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") {
-        onClose();
-      } else {
+      if (!(e instanceof DOMException && e.name === "AbortError")) {
         setError(e instanceof Error ? e.message : String(e));
       }
     } finally {
@@ -150,8 +194,8 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover/80 p-5 text-text shadow-2xl backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25">
+      <div className="w-[440px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-popover/70 p-5 text-text shadow-2xl backdrop-blur-md">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-headline font-semibold text-text">Export video</h2>
           <button
@@ -159,10 +203,12 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
               if (busy) abortRef.current?.abort();
               else onClose();
             }}
-            className="text-text"
+            className="grid h-10 w-10 place-items-center rounded text-text-muted transition hover:bg-overlay-2 hover:text-text min-[768px]:h-7 min-[768px]:w-7"
             aria-label="Close"
           >
-            ✕
+            <svg className="h-5 w-5 min-[768px]:h-[14px] min-[768px]:w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -250,39 +296,36 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         )}
 
-        {busy && (
-          <div className="mt-3 space-y-1.5">
-            <div className="h-1.5 overflow-hidden rounded-full bg-overlay-2">
+        <div className={`mt-3 space-y-1.5 ${!busy ? "invisible" : ""}`}>
+            <div className="relative h-1.5 overflow-hidden rounded-full bg-overlay-2">
               <div
-                className="h-full bg-accent transition-[width] duration-100"
-                style={{ width: `${progress * 100}%` }}
+                ref={barRef}
+                className="absolute inset-0"
+                style={{
+                  clipPath: "inset(0 calc((1 - var(--bar-progress, 0)) * 100%) 0 0)",
+                  background: "linear-gradient(to right, #241d9a, #f75092, #9f50d3)",
+                }}
               />
             </div>
             <div className="text-xs text-text">
               Encoding… {Math.round(progress * 100)}%
             </div>
           </div>
-        )}
 
-        <div className="mt-5 flex justify-end gap-2">
-          <Button
-            size="md"
-            variant="secondary"
-            onClick={() => {
-              if (busy) abortRef.current?.abort();
-              else onClose();
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="md"
-            variant="primary"
-            onClick={onExport}
-            disabled={busy}
-          >
-            {busy ? "Encoding…" : "Export"}
-          </Button>
+        <div className="mt-5 flex justify-end">
+          {busy ? (
+            <Button
+              size="lg"
+              variant="danger"
+              onClick={() => abortRef.current?.abort()}
+            >
+              Stop export
+            </Button>
+          ) : (
+            <Button size="lg" variant="primary" onClick={onExport}>
+              Export
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -321,7 +364,7 @@ function Segmented<T extends string>({
               ? "cursor-not-allowed border-border bg-overlay-1 text-text-subtle/50"
               : value === o.v
                 ? "border-accent/60 bg-accent/15 text-text"
-                : "border-border bg-overlay-1 text-text hover:border-border-strong")
+                : "border-border-input bg-overlay-1 text-text hover:bg-overlay-2")
           }
         >
           {o.label}

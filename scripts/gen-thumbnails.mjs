@@ -5,7 +5,7 @@
  * Prerequisites:
  *   npx playwright install chromium
  *
- * Usage (dev server must be running on :5173):
+ * Usage (dev server must be running on :5180):
  *   node scripts/gen-thumbnails.mjs
  *
  * Browser console fallback (if Playwright is unavailable):
@@ -32,7 +32,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dirname, "../public/thumbnails");
-const BASE_URL = "http://localhost:5173";
+const BASE_URL = "http://localhost:5180";
 const THUMB_WIDTH = 480;
 const THUMB_HEIGHT = 270;
 const SETTLE_MS = 800;

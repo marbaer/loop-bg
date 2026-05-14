@@ -6,13 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:harness": "vite build --config vite.harness.config.ts",
     "typecheck": "tsc -b",
     "preview": "vite preview"
   },
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.76",
-    "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@shadergradient/react": "^2.4.20",
     "culori": "^4.0.1",

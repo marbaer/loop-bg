@@ -170,7 +170,7 @@ function KindBadge({ kind }: { kind: string }) {
       className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-sm bg-accent/15 font-mono text-xs uppercase tracking-wider text-accent"
       title={kind}
     >
-      {kind === "shader" ? "LO" : kind === "r3f" ? "3D" : kind === "shadergradient" ? "SG" : "PA"}
+      {kind === "shader" ? "LO" : kind === "shadergradient" ? "SG" : "PA"}
     </div>
   );
 }

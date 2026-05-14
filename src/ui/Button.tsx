@@ -1,7 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 
 type Size = "lg" | "md" | "sm";
-type Variant = "primary" | "secondary" | "ghost" | "dashed";
+type Variant = "primary" | "secondary" | "ghost" | "dashed" | "danger";
 
 const sizeClasses: Record<Size, string> = {
   lg: "rounded px-5 py-2.5 text-base font-medium",
@@ -16,6 +16,7 @@ const variantClasses: Record<Variant, string> = {
   ghost: "text-text-muted hover:text-text",
   dashed:
     "w-full border border-dashed border-border bg-overlay-1 text-text-subtle hover:border-border-strong hover:text-text",
+  danger: "bg-danger text-white hover:opacity-90",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

@@ -47,12 +47,6 @@ function probeFenceSync(): boolean {
   }
 }
 
-/** URL of the server-side export service. Override with VITE_EXPORT_SERVER_URL
- *  in .env.local for local development (set to http://localhost:3000). */
-export const EXPORT_SERVER_URL: string =
-  (import.meta as unknown as { env: Record<string, string> }).env.VITE_EXPORT_SERVER_URL ??
-  "https://loopbg5eb06312-export.functions.fnc.fr-par.scw.cloud";
-
 /** True when the device is mobile — routes to MediaRecorder export instead of WebCodecs. */
 export function shouldUseMobileExport(): boolean {
   const ua = navigator.userAgent;

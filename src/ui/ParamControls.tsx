@@ -11,7 +11,7 @@ function ToggleRow({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 py-0.5 cursor-pointer">
+    <label className="flex items-center justify-between gap-3 py-1 cursor-pointer">
       <span className="text-sm text-text-muted">{label}</span>
       <button
         type="button"
@@ -20,14 +20,14 @@ function ToggleRow({
         aria-label={label}
         onClick={() => onChange(!checked)}
         className={
-          "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors " +
+          "relative inline-flex h-7 w-12 min-[768px]:h-5 min-[768px]:w-9 flex-shrink-0 items-center rounded-full transition-colors " +
           (checked ? "bg-accent" : "bg-overlay-2")
         }
       >
         <span
           className={
-            "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform " +
-            (checked ? "translate-x-[1.125rem]" : "translate-x-0.5")
+            "inline-block h-6 w-6 min-[768px]:h-4 min-[768px]:w-4 transform rounded-full bg-white shadow transition-transform " +
+            (checked ? "translate-x-[1.375rem] min-[768px]:translate-x-[1.125rem]" : "translate-x-0.5")
           }
         />
       </button>

@@ -40,23 +40,6 @@ export interface ShaderPreset extends PresetBase {
   variants?: PaperVariant[];
 }
 
-/** React Three Fiber scene preset. The Scene component receives params, palette
- *  and the current loop time t in [0,1); it should drive its own animation
- *  from t (not from clock state) so external code can sample any frame
- *  deterministically (e.g. for export). */
-export interface SceneProps {
-  params: ParamValues;
-  palette: Palette;
-  /** Current loop time, in [0,1). For preview, drives via rAF; for export,
-   *  driven deterministically by the export pipeline. */
-  t: number;
-}
-
-export interface R3FPreset extends PresetBase {
-  kind: "r3f";
-  Scene: ComponentType<SceneProps>;
-}
-
 /** Preset family backed by @shadergradient/react. The component owns its own
  *  R3F Canvas (ShaderGradientCanvas) and camera-controls, so we don't render
  *  it through the generic R3FPreview. Params are passed straight through to
@@ -127,7 +110,7 @@ export interface PaperPreset extends PresetBase {
   colorSlots?: ColorSlot[];
 }
 
-export type Preset = ShaderPreset | R3FPreset | PaperPreset | ShaderGradientPreset;
+export type Preset = ShaderPreset | PaperPreset | ShaderGradientPreset;
 
 export function defaultsFromSchema(schema: ParamSchema[]): ParamValues {
   const out: ParamValues = {};

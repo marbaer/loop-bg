@@ -14,13 +14,9 @@ export interface ExportArgs {
   onProgress?: (frame: number, total: number) => void;
 }
 
-/** R3F-preset export path is intentionally NOT implemented yet — that's a
- *  separate piece of work (off-screen R3F render via three.js WebGLRenderer
- *  with deterministic frame stepping). */
-
 export interface ExportResult {
   blob: Blob;
-  encoder: "webcodecs" | "ffmpeg-fallback";
+  encoder: "webcodecs";
   filename: string;
 }
 
@@ -32,10 +28,7 @@ export async function runExport(args: ExportArgs): Promise<ExportResult> {
   const { preset, params, palette, config, signal, onProgress } = args;
   signal?.throwIfAborted();
   if (preset.kind !== "shader") {
-    throw new Error(
-      `Export not yet supported for "${preset.kind}" presets. The R3F export ` +
-        `pipeline (offscreen Three.js render + frame capture) is the next thing to build.`
-    );
+    throw new Error(`runExport called with unexpected preset kind "${preset.kind}"`);
   }
   const totalFrames = Math.round(config.durationSeconds * config.fps);
 

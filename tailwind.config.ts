@@ -15,6 +15,7 @@ export default {
         "surface-popover": alpha("--surface-popover"),
         border: opacityScaled("--border", "--border-alpha"),
         "border-strong": opacityScaled("--border-strong", "--border-strong-alpha"),
+        "border-input": opacityScaled("--border-input", "--border-input-alpha"),
         text: alpha("--text"),
         "text-muted": alpha("--text-muted"),
         "text-subtle": alpha("--text-subtle"),

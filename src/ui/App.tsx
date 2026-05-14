@@ -4,7 +4,6 @@ import { getShareUrl } from "../state/share";
 import { buildPalette } from "../color/palette";
 import { Renderer } from "../render/Renderer";
 import { PreviewLoop } from "../render/PreviewLoop";
-import { R3FPreview } from "../render/R3FPreview";
 import { PaperPreview } from "../render/PaperPreview";
 import { ShaderGradientPreview } from "../render/ShaderGradientPreview";
 import { PresetCurrentCard } from "./PresetCurrentCard";
@@ -45,26 +44,74 @@ export function App() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  useEffect(() => {
+    const mainEl = document.querySelector('main') as HTMLElement | null;
+    const asideEl = document.querySelector('aside') as HTMLElement | null;
+    const spacerEl = document.querySelector('.loopbg-aside-spacer') as HTMLElement | null;
+
+    let rafId: number | null = null;
+    const updateProgress = () => {
+      rafId = null;
+      const scrollY = window.scrollY;
+      const progress = Math.min(scrollY / 200, 1);
+      document.documentElement.style.setProperty('--scroll-progress', String(progress));
+      document.documentElement.style.setProperty(
+        '--scroll-fade-buttons-pe',
+        progress > 0.75 ? 'none' : 'auto'
+      );
+      if (spacerEl && mainEl && asideEl) {
+        // Cap the scroll contribution at 200 (the animation boundary) so the
+        // spacer freezes once the canvas reaches minimum size. Without the cap,
+        // growing the spacer makes the document taller → allows more scroll →
+        // spacer grows more → infinite feedback loop.
+        const cappedScrollY = Math.min(scrollY, 200);
+        const mainBottom = mainEl.getBoundingClientRect().bottom;
+        // aside.offsetTop equivalent — document-absolute position, unaffected
+        // by how much we've scrolled. Spacer lives inside aside so it never
+        // changes aside's start position.
+        const asideDocTop = asideEl.getBoundingClientRect().top + scrollY;
+        // Push aside content (Loop BG header) to sit at main's bottom edge.
+        // 16px = p-4 aside padding-top on mobile.
+        spacerEl.style.height = Math.max(0, mainBottom - (asideDocTop - cappedScrollY) - 16) + 'px';
+      }
+    };
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(updateProgress);
+    };
+    updateProgress();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
   const showVariants =
     (preset.kind === "paper" || preset.kind === "shader") &&
     (preset.variants?.length ?? 0) > 1;
 
   return (
-    <div className="flex min-h-full w-full flex-col bg-surface text-text lg:h-full lg:flex-row">
-      <main className="relative flex flex-col items-center justify-center gap-5 bg-surface p-4 lg:flex-1 lg:gap-7 lg:p-6">
+    <div className="flex min-h-full w-full flex-col bg-surface text-text min-[768px]:h-full min-[768px]:flex-row">
+      {/* Mobile only: switcher lives before main so it scrolls off the top when main sticks */}
+      <div className="flex justify-center px-4 pt-4 min-[768px]:hidden">
         <AspectRatioSwitcher />
+      </div>
+      <main className="loopbg-sticky-canvas relative flex flex-col items-center justify-center gap-5 bg-surface p-4 min-[768px]:min-w-0 min-[768px]:flex-1 min-[768px]:gap-7 min-[768px]:p-6">
+        <div className="loopbg-glass-bar" aria-hidden="true" />
+        {/* Desktop only: switcher lives inside main */}
+        <div className="hidden min-[768px]:flex loopbg-aspect-switcher"><AspectRatioSwitcher /></div>
         <div
-          className="relative w-full"
+          className="relative z-[1] w-full cursor-pointer"
           style={{ maxWidth: `min(100%, calc((100vh - 11rem) * ${aspectRatioNumber(aspectRatio)}))` }}
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
           <div
-            className="w-full overflow-hidden rounded border border-border shadow-panel"
-            style={{ aspectRatio: aspectRatio.replace(":", "/") }}
+            className="loopbg-sticky-canvas-inner w-full overflow-hidden rounded border border-border shadow-panel"
+            style={{ aspectRatio: aspectRatio.replace(":", "/"), '--canvas-ar': aspectRatioNumber(aspectRatio) } as React.CSSProperties}
           >
             {preset.kind === "shader" ? (
               <ShaderPreview />
-            ) : preset.kind === "r3f" ? (
-              <R3FPreview preset={preset} />
             ) : preset.kind === "shadergradient" ? (
               <ShaderGradientPreview key={preset.id} preset={preset} />
             ) : (
@@ -72,13 +119,12 @@ export function App() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="loopbg-scroll-fade-buttons relative z-[1] flex items-center gap-2">
           <Button
             size="lg"
             variant="primary"
             onClick={() => setExportOpen(true)}
-            disabled={preset.kind === "r3f"}
-            title={preset.kind === "r3f" ? "Export not wired up for legacy R3F presets" : undefined}
+
           >
             Export video
           </Button>
@@ -109,7 +155,8 @@ export function App() {
           </Button>
         </div>
       </main>
-      <aside className="w-full border-t border-border bg-surface-raised p-4 lg:w-[340px] lg:flex-shrink-0 lg:overflow-y-scroll lg:border-l lg:border-t-0 lg:p-5">
+      <aside className="w-full border-t border-border bg-surface-raised p-4 min-[768px]:w-[370px] min-[768px]:flex-shrink-0 min-[768px]:overflow-y-scroll min-[768px]:border-l min-[768px]:border-t-0 min-[768px]:p-5">
+        <div className="loopbg-aside-spacer" aria-hidden="true" />
         <header className="mb-5 flex items-center justify-between">
           <div className="text-headline font-semibold text-text">Loop BG</div>
           <IconButton
@@ -122,7 +169,7 @@ export function App() {
         <Section title="Preset">
           <div className="space-y-2">
             <PresetCurrentCard />
-            {showVariants && (preset.kind === "paper" || preset.kind === "shader") && (
+            {showVariants && (
               <VariantSelector preset={preset} />
             )}
           </div>
@@ -159,7 +206,7 @@ export function App() {
 }
 
 /** Shader preview pipeline — only mounted when a shader preset is active so
- *  its WebGL2 context doesn't conflict with R3F's. */
+ *  its WebGL2 context doesn't conflict with ShaderGradientPreview's. */
 function ShaderPreview() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
@@ -247,7 +294,7 @@ function IconButton({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className="grid h-7 w-7 place-items-center rounded text-text-muted transition hover:bg-overlay-2 hover:text-text"
+      className="grid h-10 w-10 place-items-center rounded text-text-muted transition hover:bg-overlay-2 hover:text-text min-[768px]:h-7 min-[768px]:w-7"
     >
       {children}
     </button>
@@ -256,7 +303,7 @@ function IconButton({
 
 function SunIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-5 w-5 min-[768px]:h-[14px] min-[768px]:w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
     </svg>
@@ -265,7 +312,7 @@ function SunIcon() {
 
 function MoonIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-5 w-5 min-[768px]:h-[14px] min-[768px]:w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   );
@@ -273,7 +320,7 @@ function MoonIcon() {
 
 function ResetIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-5 w-5 min-[768px]:h-[13px] min-[768px]:w-[13px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
       <path d="M21 3v5h-5" />
       <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />

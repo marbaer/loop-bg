@@ -13,6 +13,8 @@
   --border-alpha:     0.10;
   --border-strong:    255 255 255;
   --border-strong-alpha: 0.20;
+  --border-input:     255 255 255;
+  --border-input-alpha: 0.28;
   --text:             243 244 246;    /* grey 1 */
   --text-muted:       143 146 163;    /* grey 4 */
   --text-subtle:      111 115 135;    /* grey 5 */
@@ -33,6 +35,8 @@
   --border-alpha:     1.0;
   --border-strong:    215 216 224;    /* grey 3 */
   --border-strong-alpha: 1.0;
+  --border-input:     160 163 185;    /* grey 4 — form control border */
+  --border-input-alpha: 1.0;
   --text:             42 44 55;       /* grey 8 */
   --text-muted:       111 115 135;    /* grey 5 */
   --text-subtle:      143 146 163;    /* grey 4 */
@@ -43,6 +47,12 @@
   --accent:           107 83 255;
   --accent-text:      255 255 255;
   --danger:           225 71 71;
+}
+
+@layer utilities {
+  .border-border-input {
+    border-color: rgb(var(--border-input) / var(--border-input-alpha));
+  }
 }
 
 html,
@@ -59,6 +69,22 @@ body {
   font-family: "Lato", "Inter", ui-sans-serif, system-ui, sans-serif;
   background: rgb(var(--surface));
   color: rgb(var(--text));
+}
+
+.loopbg-glass-bar {
+  display: none;
+}
+
+.loopbg-aside-spacer {
+  display: none;
+}
+
+/* Promote WebGL canvas wrapper to its own GPU compositing layer on all viewports.
+   Prevents Safari from ghost-rendering the canvas at both its natural and stuck
+   positions when a parent element uses position:sticky. */
+.loopbg-sticky-canvas-inner {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 /* react-colorful — themed surfaces */
@@ -88,8 +114,8 @@ body {
 
 /* slim scrollbars — themed via overlay token */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -190,8 +216,8 @@ input[type="range"]::-moz-range-thumb:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Mobile — below lg breakpoint (1024px), matching the app's layout switch */
-@media (max-width: 1023px) {
+/* Mobile — below the app's layout switch breakpoint (768px) */
+@media (max-width: 767px) {
   /* Taller track area so the slider is easier to tap, larger thumb */
   input[type="range"] {
     height: 32px;
@@ -219,4 +245,57 @@ input[type="range"]::-moz-range-thumb:hover {
   /* Hard floor: no input can trigger iOS Safari zoom (threshold: 16px).
      Safety net independent of whatever utility class is on the element. */
   input, select, textarea { font-size: 16px !important; }
+
+  .loopbg-glass-bar {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgb(var(--surface-popover) / 0.72);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgb(var(--border) / var(--border-alpha));
+    opacity: var(--scroll-progress, 0);
+    pointer-events: none;
+  }
+
+  .loopbg-sticky-canvas {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    justify-content: flex-start;
+    background: transparent;
+    padding-top: 8px;
+    padding-bottom: calc(32px - var(--scroll-progress, 0) * 24px);
+    gap: clamp(0px, calc((1 - var(--scroll-progress, 0)) * 2 * 20px), 20px);
+    /* pre-composite the sticky element as a single GPU layer so the WebGL canvas
+       doesn't get rendered at both its natural and stuck positions on Safari */
+    will-change: transform;
+  }
+  /* Block all pointer interaction inside the preview on mobile so ShaderGradient
+     camera drag doesn't conflict with tap-to-scroll-up. Clicks fall through to
+     the outer wrapper's onClick handler. */
+  .loopbg-sticky-canvas-inner {
+    pointer-events: none;
+  }
+
+  /* Canvas shrinks to a floating thumbnail as user scrolls into params */
+  .loopbg-sticky-canvas-inner {
+    width: min(
+      100%,
+      calc(100% * (1 - var(--scroll-progress, 0)) + var(--scroll-progress, 0) * 25vh * var(--canvas-ar, 1))
+    );
+    margin: 0 auto;
+    transition: width 120ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .loopbg-scroll-fade-buttons {
+    opacity: clamp(0, calc((1 - var(--scroll-progress, 0)) * 2), 1);
+    max-height: clamp(0px, calc((1 - var(--scroll-progress, 0)) * 2 * 80px), 80px);
+    overflow: hidden;
+    pointer-events: var(--scroll-fade-buttons-pe, auto);
+    transition: opacity 120ms ease-out;
+  }
+
+  .loopbg-aside-spacer {
+    display: block;
+  }
 }
