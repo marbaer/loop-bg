@@ -366,13 +366,11 @@ function ImageDownloadButton({ presetId }: { presetId: string }) {
           .finally(() => setSaving(false));
       }}
       className={
-        "absolute bottom-3 right-3 z-10 grid h-9 w-9 place-items-center rounded " +
-        "bg-black/40 text-white/90 backdrop-blur-sm transition-opacity duration-200 " +
+        "loopbg-dl-btn absolute bottom-3 right-3 z-10 grid h-9 w-9 place-items-center rounded " +
+        "bg-black/40 text-white/90 backdrop-blur-sm " +
         "hover:bg-black/55 hover:text-white active:scale-95 " +
         "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 " +
         "[@media(hover:hover)]:focus-visible:opacity-100 " +
-        "min-[768px]:opacity-0 " +
-        "[@media(hover:none)]:min-[768px]:opacity-70 " +
         (saving ? "!opacity-100" : "")
       }
     >
