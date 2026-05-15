@@ -110,7 +110,23 @@ export interface PaperPreset extends PresetBase {
   colorSlots?: ColorSlot[];
 }
 
-export type Preset = ShaderPreset | PaperPreset | ShaderGradientPreset;
+/** Two-pass preset: a ShaderPreset renders the background to an FBO texture each
+ *  frame, then a second GLSL shader renders the foreground using that texture as
+ *  `u_image`. The foreground shader should have its `#version`/`precision` header
+ *  stripped and any `v_imageUV` varying renamed to `v_uv` before being stored here. */
+export interface CompositePreset extends PresetBase {
+  kind: "composite";
+  /** Rendered to an offscreen FBO each frame to produce the background texture. */
+  backgroundPreset: ShaderPreset;
+  /** Cleaned foreground GLSL (version header stripped, v_imageUV → v_uv). */
+  foregroundShader: string;
+  colorSlots?: ColorSlot[];
+  variants?: PaperVariant[];
+  backgroundUniforms: (params: ParamValues) => UniformValues;
+  foregroundUniforms: (params: ParamValues) => UniformValues;
+}
+
+export type Preset = ShaderPreset | PaperPreset | ShaderGradientPreset | CompositePreset;
 
 export function defaultsFromSchema(schema: ParamSchema[]): ParamValues {
   const out: ParamValues = {};

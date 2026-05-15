@@ -89,7 +89,7 @@ export function ShaderGradientPreview({ preset }: { preset: ShaderGradientPreset
 
   return (
     <div ref={hostRef} style={{ width: "100%", height: "100%", display: "block", background: "#000" }}>
-      <ShaderGradientCanvas threshold={0} rootMargin="100px" style={{ width: "100%", height: "100%" }}>
+      <ShaderGradientCanvas threshold={0} rootMargin="100px" preserveDrawingBuffer style={{ width: "100%", height: "100%" }}>
         {/* R3F scene background — prevents transparent canvas from showing the white page through */}
         <color attach="background" args={["#000000"]} />
         <ShaderGradient

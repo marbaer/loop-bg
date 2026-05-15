@@ -20,6 +20,7 @@ import { ribbons } from "./ribbons";
 import { layers } from "./layers";
 import { loupe } from "./loupe";
 import { blob } from "./blob";
+import { flutedGlass } from "./fluted-glass";
 import { gradient } from "./gradient";
 import { shaderGradientPresets } from "./shadergradient";
 
@@ -44,6 +45,7 @@ export const presets = [
   paperLogoGemSmoke,
   // Hand-rolled
   softBlobs,
+  flutedGlass,
   aurora,
   ribbons,
   layers,

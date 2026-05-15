@@ -129,7 +129,17 @@ export interface AppState {
 }
 
 const initialParams: Record<string, ParamValues> = {};
-for (const p of presets) initialParams[p.id] = { ...p.defaults };
+const initialVariants: Record<string, string> = {};
+for (const p of presets) {
+  // Only auto-select first variant for hand-rolled shader/composite presets.
+  // Paper-design presets manage their own variant state via the library.
+  const isHandRolled = p.kind === "shader" || p.kind === "composite";
+  const first = isHandRolled ? p.variants?.[0] : undefined;
+  initialParams[p.id] = first
+    ? { ...p.defaults, ...(first.params as ParamValues) }
+    : { ...p.defaults };
+  if (first) initialVariants[p.id] = first.name;
+}
 
 const sharedSnapshot = readShareFromHash();
 
@@ -186,7 +196,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
   aspectRatio: initialAspectRatio,
   uploadedImage: null,
-  variantByPreset: hydrated?.variantByPreset ?? {},
+  variantByPreset: hydrated?.variantByPreset ?? initialVariants,
   theme: readPersistedTheme(),
   brandKits: loadKits(),
   lastAppliedKitId: null,
@@ -196,7 +206,27 @@ export const useStore = create<AppState>((set, get) => ({
     }
     set({ theme: t });
   },
-  setPreset: (id) => set({ presetId: id }),
+  setPreset: (id) =>
+    set((s) => {
+      const preset = presets.find((p) => p.id === id);
+      // Auto-apply the first variant when switching to a hand-rolled
+      // shader/composite preset that has variants and no variant has been
+      // chosen yet — ensures the named pill is highlighted and params match
+      // from the first visit. Paper-design presets manage variants themselves.
+      const isHandRolled = preset?.kind === "shader" || preset?.kind === "composite";
+      const firstVariant = isHandRolled ? preset?.variants?.[0] : undefined;
+      if (firstVariant && !s.variantByPreset[id]) {
+        return {
+          presetId: id,
+          variantByPreset: { ...s.variantByPreset, [id]: firstVariant.name },
+          paramsByPreset: {
+            ...s.paramsByPreset,
+            [id]: { ...(preset?.defaults ?? {}), ...(firstVariant.params as ParamValues) },
+          },
+        };
+      }
+      return { presetId: id };
+    }),
   setUploadedImage: (dataUrl) => set({ uploadedImage: dataUrl }),
   applyVariant: (presetId, variantName, variantParams) =>
     set((s) => {

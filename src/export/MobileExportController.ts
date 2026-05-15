@@ -2,7 +2,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { createElement, useEffect, useState, type ReactNode } from "react";
 import { ShaderGradient, ShaderGradientCanvas } from "@shadergradient/react";
 import { Renderer } from "../render/Renderer";
-import type { Preset, ShaderPreset, PaperPreset, ShaderGradientPreset, ParamValues } from "../presets/types";
+import type { Preset, ShaderPreset, PaperPreset, ShaderGradientPreset, CompositePreset, ParamValues } from "../presets/types";
 import type { Palette } from "../color/palette";
 import type { ExportConfig } from "../state/store";
 
@@ -37,6 +37,8 @@ export async function runMobileExport(args: MobileExportArgs): Promise<MobileExp
   let blob: Blob;
   if (preset.kind === "shader") {
     blob = await exportShader(preset as ShaderPreset, params, palette, config, width, height, totalFrames, mimeType, signal, onProgress);
+  } else if (preset.kind === "composite") {
+    blob = await exportComposite(preset as CompositePreset, params, config, width, height, totalFrames, mimeType, signal, onProgress);
   } else if (preset.kind === "paper") {
     blob = await exportPaper(preset as PaperPreset, params, palette, image, config, width, height, totalFrames, mimeType, signal, onProgress);
   } else if (preset.kind === "shadergradient") {
@@ -177,6 +179,50 @@ async function exportShader(
         const t = i / totalFrames;
         const tScaled = cycles === 0 ? 0 : (t * cycles) % 1;
         renderer.render(preset, params, palette, tScaled, width, height);
+        ctx.drawImage(canvas, 0, 0);
+      },
+      signal, onProgress
+    );
+  } finally {
+    renderer.dispose();
+    canvas.remove();
+  }
+}
+
+// ── Composite preset ─────────────────────────────────────────────────────────
+
+async function exportComposite(
+  preset: CompositePreset,
+  params: ParamValues,
+  config: ExportConfig,
+  width: number,
+  height: number,
+  totalFrames: number,
+  mimeType: string,
+  signal: AbortSignal | undefined,
+  onProgress: ((frame: number, total: number) => void) | undefined
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.cssText = "position:fixed;left:-99999px;top:0;pointer-events:none;";
+  document.body.appendChild(canvas);
+
+  const renderer = new Renderer(canvas, { preserveDrawingBuffer: true });
+
+  const rawSpeed = typeof (params as Record<string, unknown>).u_speed === "number"
+    ? ((params as Record<string, unknown>).u_speed as number)
+    : 1;
+  const cycles = rawSpeed === 0 ? 0 : Math.max(1, Math.round(rawSpeed));
+
+  renderer.renderComposite(preset.backgroundPreset, preset.backgroundUniforms(params), preset.id, preset.foregroundShader, preset.foregroundUniforms(params), 0, width, height);
+
+  try {
+    return await recordWithBridge(width, height, config.fps, totalFrames, mimeType,
+      async (i, ctx) => {
+        const t = i / totalFrames;
+        const tScaled = cycles === 0 ? 0 : (t * cycles) % 1;
+        renderer.renderComposite(preset.backgroundPreset, preset.backgroundUniforms(params), preset.id, preset.foregroundShader, preset.foregroundUniforms(params), tScaled, width, height);
         ctx.drawImage(canvas, 0, 0);
       },
       signal, onProgress

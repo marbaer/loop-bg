@@ -10,6 +10,7 @@ import { PresetCurrentCard } from "./PresetCurrentCard";
 import { ColorPicker } from "./ColorPicker";
 import { ParamControls } from "./ParamControls";
 import { ExportDialog } from "./ExportDialog";
+import { captureCanvasImage } from "../export/captureImage";
 import { ImageUploader } from "./ImageUploader";
 import { VariantSelector } from "./VariantSelector";
 import { ShaderColorControls } from "./ShaderColorControls";
@@ -88,7 +89,7 @@ export function App() {
   }, []);
 
   const showVariants =
-    (preset.kind === "paper" || preset.kind === "shader") &&
+    (preset.kind === "paper" || preset.kind === "shader" || preset.kind === "composite") &&
     (preset.variants?.length ?? 0) > 1;
 
   return (
@@ -102,21 +103,22 @@ export function App() {
         {/* Desktop only: switcher lives inside main */}
         <div className="hidden min-[768px]:flex loopbg-aspect-switcher"><AspectRatioSwitcher /></div>
         <div
-          className="relative z-[1] w-full cursor-pointer"
+          className="group relative z-[1] w-full cursor-pointer"
           style={{ maxWidth: `min(100%, calc((100vh - 11rem) * ${aspectRatioNumber(aspectRatio)}))` }}
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
           <div
-            className="loopbg-sticky-canvas-inner w-full overflow-hidden rounded border border-border shadow-panel"
+            className="loopbg-sticky-canvas-inner relative w-full overflow-hidden rounded border border-border shadow-panel"
             style={{ aspectRatio: aspectRatio.replace(":", "/"), '--canvas-ar': aspectRatioNumber(aspectRatio) } as React.CSSProperties}
           >
-            {preset.kind === "shader" ? (
+            {(preset.kind === "shader" || preset.kind === "composite") ? (
               <ShaderPreview />
             ) : preset.kind === "shadergradient" ? (
               <ShaderGradientPreview key={preset.id} preset={preset} />
             ) : (
               <PaperPreview preset={preset} />
             )}
+            <ImageDownloadButton presetId={preset.id} />
           </div>
         </div>
         <div className="loopbg-scroll-fade-buttons relative z-[1] flex items-center gap-2">
@@ -216,7 +218,7 @@ function ShaderPreview() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     try {
-      rendererRef.current = new Renderer(canvas);
+      rendererRef.current = new Renderer(canvas, { preserveDrawingBuffer: true });
     } catch (e) {
       console.error(e);
       return;
@@ -228,7 +230,7 @@ function ShaderPreview() {
         if (!renderer) return;
         const s = useStore.getState();
         const presetNow = presets.find((p) => p.id === s.presetId);
-        if (!presetNow || presetNow.kind !== "shader") return;
+        if (!presetNow || (presetNow.kind !== "shader" && presetNow.kind !== "composite")) return;
         const p = s.paramsByPreset[s.presetId];
         const palette = buildPalette(s.accentHex, s.paletteMode, {
           bgLightness: s.bgLightness,
@@ -239,7 +241,20 @@ function ShaderPreview() {
         // `t` would jump from speed→0 each duration and break the seam.
         const speed = typeof p.u_speed === "number" ? p.u_speed : 1;
         const tScaled = (progress * speed) % 1;
-        renderer.render(presetNow, p, palette, tScaled, width, height);
+        if (presetNow.kind === "composite") {
+          renderer.renderComposite(
+            presetNow.backgroundPreset,
+            presetNow.backgroundUniforms(p),
+            presetNow.id,
+            presetNow.foregroundShader,
+            presetNow.foregroundUniforms(p),
+            tScaled,
+            width,
+            height,
+          );
+        } else {
+          renderer.render(presetNow, p, palette, tScaled, width, height);
+        }
       },
       () => useStore.getState().durationSeconds * 1000
     );
@@ -314,6 +329,50 @@ function MoonIcon() {
   return (
     <svg className="h-5 w-5 min-[768px]:h-[14px] min-[768px]:w-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  );
+}
+
+function ImageDownloadButton({ presetId }: { presetId: string }) {
+  const [saving, setSaving] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Download image"
+      aria-label="Download current frame as PNG"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (saving) return;
+        const canvas = e.currentTarget
+          .closest(".loopbg-sticky-canvas-inner")
+          ?.querySelector("canvas") as HTMLCanvasElement | null;
+        if (!canvas) return;
+        setSaving(true);
+        captureCanvasImage(canvas, presetId)
+          .catch((err) => console.error("Image capture failed", err))
+          .finally(() => setSaving(false));
+      }}
+      className={
+        "absolute bottom-3 right-3 z-[2] grid h-9 w-9 place-items-center rounded " +
+        "bg-black/40 text-white/90 backdrop-blur-sm transition-opacity duration-200 " +
+        "hover:bg-black/55 hover:text-white active:scale-95 " +
+        "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 " +
+        "[@media(hover:hover)]:focus-visible:opacity-100 " +
+        "[@media(hover:none)]:opacity-70 " +
+        (saving ? "!opacity-100" : "")
+      }
+    >
+      <DownloadIcon />
+    </button>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   );
 }

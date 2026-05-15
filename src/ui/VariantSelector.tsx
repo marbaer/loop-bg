@@ -1,11 +1,11 @@
 import { useStore } from "../state/store";
-import type { PaperPreset, ShaderPreset } from "../presets/types";
+import type { PaperPreset, ShaderPreset, CompositePreset } from "../presets/types";
 
 /** Pill row of named variants displayed above the parameter sliders.
  *  Selecting a variant copies its params into the user's stored params so the
  *  sliders & colors update accordingly. Works for both paper-design library
  *  presets and hand-rolled shader presets that define a `variants` array. */
-export function VariantSelector({ preset }: { preset: PaperPreset | ShaderPreset }) {
+export function VariantSelector({ preset }: { preset: PaperPreset | ShaderPreset | CompositePreset }) {
   const variants = preset.variants ?? [];
   const activeVariant = useStore((s) => s.variantByPreset[preset.id]);
   const applyVariant = useStore((s) => s.applyVariant);

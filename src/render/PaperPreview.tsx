@@ -67,6 +67,7 @@ export function PaperPreview({ preset }: { preset: PaperPreset }) {
     <div ref={hostRef} style={{ width: "100%", height: "100%", display: "block" }}>
       <Component
         {...props}
+        webGlContextAttributes={{ preserveDrawingBuffer: true }}
         style={{ width: "100%", height: "100%", display: "block", ...preset.style }}
       />
     </div>

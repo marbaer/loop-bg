@@ -27,7 +27,7 @@ export interface ExportResult {
 export async function runExport(args: ExportArgs): Promise<ExportResult> {
   const { preset, params, palette, config, signal, onProgress } = args;
   signal?.throwIfAborted();
-  if (preset.kind !== "shader") {
+  if (preset.kind !== "shader" && preset.kind !== "composite") {
     throw new Error(`runExport called with unexpected preset kind "${preset.kind}"`);
   }
   const totalFrames = Math.round(config.durationSeconds * config.fps);
@@ -70,7 +70,20 @@ export async function runExport(args: ExportArgs): Promise<ExportResult> {
       signal?.throwIfAborted();
       const t = i / totalFrames; // critical: not i/(totalFrames-1)
       const tScaled = cycles === 0 ? 0 : (t * cycles) % 1;
-      renderer.render(preset, params, palette, tScaled, width, height);
+      if (preset.kind === "composite") {
+        renderer.renderComposite(
+          preset.backgroundPreset,
+          preset.backgroundUniforms(params),
+          preset.id,
+          preset.foregroundShader,
+          preset.foregroundUniforms(params),
+          tScaled,
+          width,
+          height,
+        );
+      } else {
+        renderer.render(preset, params, palette, tScaled, width, height);
+      }
       // Read GPU work into a VideoFrame via the canvas itself.
       await enc.encodeFrame(offscreen, i);
     }
