@@ -340,6 +340,19 @@ function ImageDownloadButton({ presetId }: { presetId: string }) {
       type="button"
       title="Download image"
       aria-label="Download current frame as PNG"
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (saving) return;
+        const canvas = e.currentTarget
+          .closest(".loopbg-sticky-canvas-inner")
+          ?.querySelector("canvas") as HTMLCanvasElement | null;
+        if (!canvas) return;
+        setSaving(true);
+        captureCanvasImage(canvas, presetId)
+          .catch((err) => console.error("Image capture failed", err))
+          .finally(() => setSaving(false));
+      }}
       onClick={(e) => {
         e.stopPropagation();
         if (saving) return;
@@ -353,12 +366,13 @@ function ImageDownloadButton({ presetId }: { presetId: string }) {
           .finally(() => setSaving(false));
       }}
       className={
-        "absolute bottom-3 right-3 z-[2] grid h-9 w-9 place-items-center rounded " +
+        "absolute bottom-3 right-3 z-10 grid h-9 w-9 place-items-center rounded " +
         "bg-black/40 text-white/90 backdrop-blur-sm transition-opacity duration-200 " +
         "hover:bg-black/55 hover:text-white active:scale-95 " +
         "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 " +
         "[@media(hover:hover)]:focus-visible:opacity-100 " +
-        "[@media(hover:none)]:opacity-70 " +
+        "min-[768px]:opacity-0 " +
+        "[@media(hover:none)]:min-[768px]:opacity-70 " +
         (saving ? "!opacity-100" : "")
       }
     >
